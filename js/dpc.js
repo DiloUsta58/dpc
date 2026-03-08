@@ -323,6 +323,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const sonderRowsData = [];
   const stockRowsData = [];
   const stockRows = document.querySelectorAll("table.tight tbody tr");
+  const waTableBody = document.querySelector("table.tbl-wa tbody");
+  const waControlsRow = waTableBody ? waTableBody.querySelector("tr.wa-row-controls") : null;
+  const getWaDataRows = () => {
+    if (!waTableBody) {
+      return [];
+    }
+    return Array.from(waTableBody.querySelectorAll("tr")).filter((row) => !row.classList.contains("wa-row-controls"));
+  };
 
   const propagateNvToSamePosition = (sourceRowLabel, sourceBemerkInput) => {
     if (suppressRemarkPropagation) {
@@ -358,6 +366,103 @@ document.addEventListener("DOMContentLoaded", () => {
     } finally {
       suppressRemarkPropagation = false;
     }
+  };
+
+  const bindWaRowBehaviors = (row) => {
+    if (!row || row.dataset.waBound === "1") {
+      return;
+    }
+    row.dataset.waBound = "1";
+
+    const check = row.querySelector(".status-check");
+    const materialInput = row.querySelector("td:nth-child(1) input[type='text']");
+    const mengeInput = row.querySelector("td:nth-child(2) input[type='text']");
+    const bereitstInput = row.querySelector("td:nth-child(3) input[type='text']");
+    const remarkInput = row.querySelector(".bemerk-cell input[type='text']");
+
+    const normalizeBemerk = (value) => {
+      const raw = String(value || "").trim().toLowerCase();
+      if (raw === "") {
+        return "";
+      }
+      const compact = raw.replace(/\s+/g, "");
+      if (compact === "nv" || compact === "n.v." || compact === "n.v") {
+        return "n.v.";
+      }
+      return "";
+    };
+
+    const sync = () => {
+      const remarkIsNv = remarkInput && String(remarkInput.value || "").trim().toLowerCase() === "n.v.";
+      if (check) {
+        if (remarkIsNv && check.checked) {
+          check.checked = false;
+        }
+        check.disabled = remarkIsNv;
+        row.classList.toggle("row-done", check.checked);
+        row.classList.toggle("row-nv-done", check.checked && remarkIsNv);
+      }
+      row.classList.toggle("row-not-available", remarkIsNv);
+      updateTableDoneState(row.closest("table.tight"));
+      saveAutoWvorbeRows();
+    };
+
+    if (check) {
+      check.addEventListener("change", sync);
+    }
+    if (remarkInput) {
+      remarkInput.addEventListener("input", () => {
+        row.classList.toggle("row-not-available", String(remarkInput.value || "").trim().toLowerCase() === "n.v.");
+        updateTableDoneState(row.closest("table.tight"));
+      });
+      const validate = () => {
+        remarkInput.value = normalizeBemerk(remarkInput.value);
+        sync();
+      };
+      remarkInput.addEventListener("change", validate);
+      remarkInput.addEventListener("blur", validate);
+    }
+    [materialInput, mengeInput, bereitstInput].forEach((input) => {
+      if (!input) {
+        return;
+      }
+      input.addEventListener("input", () => {
+        updateTableDoneState(row.closest("table.tight"));
+        saveAutoWvorbeRows();
+      });
+      input.addEventListener("change", () => {
+        updateTableDoneState(row.closest("table.tight"));
+        saveAutoWvorbeRows();
+      });
+    });
+    sync();
+  };
+
+  const createWaDataRow = () => {
+    const row = document.createElement("tr");
+    row.innerHTML = "<td class=\"editable-cell\"><input type=\"text\" value=\"\" /></td><td class=\"editable-cell\"><input type=\"text\" value=\"\" /></td><td class=\"editable-cell\"><input type=\"text\" value=\"\" /></td><td class=\"erld-cell\"><input class=\"status-check\" type=\"checkbox\" /></td><td class=\"bemerk-cell\"><input type=\"text\" value=\"\" /></td>";
+    bindWaRowBehaviors(row);
+    return row;
+  };
+
+  const ensureWaRowCount = (targetCount) => {
+    if (!waTableBody) {
+      return;
+    }
+    const safeTarget = Math.max(5, Number.parseInt(String(targetCount || 0), 10) || 5);
+    while (getWaDataRows().length < safeTarget) {
+      const newRow = createWaDataRow();
+      waTableBody.insertBefore(newRow, waControlsRow || null);
+    }
+    while (getWaDataRows().length > safeTarget) {
+      const rows = getWaDataRows();
+      const last = rows[rows.length - 1];
+      if (!last) {
+        break;
+      }
+      last.remove();
+    }
+    updateTableDoneState(document.querySelector("table.tbl-wa"));
   };
 
   stockRows.forEach((row) => {
@@ -443,9 +548,10 @@ document.addEventListener("DOMContentLoaded", () => {
           bereitstInput.setCustomValidity("");
           return;
         }
-        const unitMatch = raw.match(/^[-+]?\d+(?:[.,]\d+)?\s*[A-Za-zÄÖÜäöü]+\.?$/);
-        if (!unitMatch) {
-          bereitstInput.setCustomValidity("Bitte Einheit angeben, z.B. 1000 Kg oder 50 Stk.");
+        const withUnit = /^[-+]?\d+(?:[.,]\d+)?\s*[A-Za-zÄÖÜäöü]+\.?$/.test(raw);
+        const numberOnly = /^[-+]?\d+(?:[.,]\d+)?$/.test(raw);
+        if (!withUnit && !numberOnly) {
+          bereitstInput.setCustomValidity("Nur Zahl oder Zahl mit Einheit erlaubt, z.B. 4 oder 50 Stk.");
           bereitstInput.reportValidity();
           return;
         }
@@ -543,6 +649,8 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  getWaDataRows().forEach((row) => bindWaRowBehaviors(row));
+
   const extractDeptCode = (tableTitle) => {
     const normalized = String(tableTitle || "").replace(/\s+/g, " ").trim().toUpperCase();
     if (normalized.includes("SONDERBESTELLUNG")) {
@@ -604,6 +712,21 @@ document.addEventListener("DOMContentLoaded", () => {
     25: 5
   };
 
+  const sonderMaterialConstants = {
+    FR60: { factor: 12.5, outputUnit: "Kg" },
+    COAL: { factor: 20, outputUnit: "Kg" },
+    IPA: { factor: 150, outputUnit: "Kg" },
+    LUDOX: { factor: 255, outputUnit: "Kg" },
+    W640: { factor: 60, outputUnit: "Kg" },
+    910: { factor: 50, outputUnit: "Stk." },
+    688: { factor: 50, outputUnit: "Stk." },
+    PLATTEM: { factor: 40, outputUnit: "Stk." }
+  };
+
+  const normalizeSonderMaterialKey = (value) => String(value || "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
+
   const extractPositionNumber = (rowLabel) => extractPosNumberFromLabel(rowLabel);
 
   const buildAutoWvorbeRows = () => {
@@ -624,33 +747,10 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       if (isSonderbestTable(entry.tableTitle)) {
-        const rowCells = entry.row.querySelectorAll("td");
-        const materialText = String(rowCells[0]?.querySelector("input[type='text']")?.value || "").trim();
-        const menge = parseNumber(entry.istMaxInput.value);
-        const bereitRaw = String(entry.bereitstInput.value || "").trim();
-        if (!materialText || menge === null || menge <= 0 || bereitRaw === "") {
-          return;
-        }
-
-        const bereMatch = bereitRaw.match(/^([-+]?\d+(?:[.,]\d+)?)\s*([A-Za-zÄÖÜäöü]+\.?)$/);
-        if (!bereMatch) {
-          return;
-        }
-
-        const bereitNum = parseNumber(bereMatch[1]);
-        const unit = String(bereMatch[2] || "").trim();
-        if (bereitNum === null || !unit) {
-          return;
-        }
-
-        const total = menge * bereitNum;
-        rows.push([
-          "",
-          materialText,
-          "",
-          "",
-          `${formatNumber(total)} ${unit}`
-        ]);
+        return;
+      }
+      
+      if (entry.row.classList.contains("wa-row-controls")) {
         return;
       }
 
@@ -769,6 +869,50 @@ document.addEventListener("DOMContentLoaded", () => {
         ]);
       });
 
+    getWaDataRows().forEach((row) => {
+      const check = row.querySelector(".status-check");
+      if (!check || !check.checked) {
+        return;
+      }
+      const materialText = String(row.querySelector("td:nth-child(1) input[type='text']")?.value || "").trim();
+      const menge = parseNumber(row.querySelector("td:nth-child(2) input[type='text']")?.value || "");
+      const bereitRaw = String(row.querySelector("td:nth-child(3) input[type='text']")?.value || "").trim();
+      if (!materialText || menge === null || menge <= 0 || bereitRaw === "") {
+        return;
+      }
+      const withUnitMatch = bereitRaw.match(/^([-+]?\d+(?:[.,]\d+)?)\s*([A-Za-zÄÖÜäöü]+\.?)$/);
+      const numberOnlyMatch = bereitRaw.match(/^([-+]?\d+(?:[.,]\d+)?)$/);
+      if (!withUnitMatch && !numberOnlyMatch) {
+        return;
+      }
+      const bereitNum = parseNumber(withUnitMatch ? withUnitMatch[1] : numberOnlyMatch?.[1] || "");
+      const unit = withUnitMatch ? String(withUnitMatch[2] || "").trim() : "Stk";
+      if (bereitNum === null) {
+        return;
+      }
+      const total = menge * bereitNum;
+      const materialKey = normalizeSonderMaterialKey(materialText);
+      const constantCfg = sonderMaterialConstants[materialKey];
+      if (constantCfg) {
+        const converted = total * constantCfg.factor;
+        rows.push([
+          "",
+          materialText,
+          "",
+          "",
+          `${formatNumber(total)} Stk (${formatNumber(converted)} ${constantCfg.outputUnit})`
+        ]);
+        return;
+      }
+      rows.push([
+        "",
+        materialText,
+        "",
+        "",
+        `${formatNumber(total)} ${unit}`
+      ]);
+    });
+
     return rows;
   };
 
@@ -831,7 +975,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     const headCheck = table.querySelector("thead .section input[type='checkbox']");
     const isSonderbestTableEl = table.classList.contains("tbl-wa");
-    const rows = Array.from(table.querySelectorAll("tbody tr"));
+    const rows = Array.from(table.querySelectorAll("tbody tr")).filter((tr) => !tr.classList.contains("wa-row-controls"));
     if (rows.length === 0) {
       table.classList.remove("table-done");
       table.classList.remove("table-nv-done");
@@ -920,14 +1064,21 @@ document.addEventListener("DOMContentLoaded", () => {
   const exportLocalFileBtn = document.getElementById("exportLocalFileBtn");
   const importLocalFileBtn = document.getElementById("importLocalFileBtn");
   const importFileInput = document.getElementById("importFileInput");
+  const addWaRowBtn = document.getElementById("addWaRowBtn");
+  const removeWaRowBtn = document.getElementById("removeWaRowBtn");
   const notesCells = Array.from(document.querySelectorAll(".notes-table td[contenteditable='true']"));
-  const istInputs = Array.from(document.querySelectorAll("table.tight tbody tr td:nth-child(2) input[type='text']"));
-  const sonderMaterialInputs = Array.from(document.querySelectorAll("table.tbl-wa tbody tr td:nth-child(1) input[type='text']"));
-  const sonderBereitstInputs = Array.from(document.querySelectorAll("table.tbl-wa tbody tr td:nth-child(3) input[type='text']"));
-  const checks = Array.from(document.querySelectorAll(".status-check"));
-  const remarkInputs = Array.from(document.querySelectorAll("table.tight tbody tr td:nth-child(5) input[type='text']"));
+  const getIstInputs = () => Array.from(document.querySelectorAll("table.tight tbody tr td:nth-child(2) input[type='text']"));
+  const getSonderMaterialInputs = () => Array.from(document.querySelectorAll("table.tbl-wa tbody tr:not(.wa-row-controls) td:nth-child(1) input[type='text']"));
+  const getSonderBereitstInputs = () => Array.from(document.querySelectorAll("table.tbl-wa tbody tr:not(.wa-row-controls) td:nth-child(3) input[type='text']"));
+  const getChecks = () => Array.from(document.querySelectorAll(".status-check"));
+  const getRemarkInputs = () => Array.from(document.querySelectorAll("table.tight tbody tr td:nth-child(5) input[type='text']"));
 
   const getSnapshot = () => {
+    const istInputs = getIstInputs();
+    const checks = getChecks();
+    const remarkInputs = getRemarkInputs();
+    const sonderMaterialInputs = getSonderMaterialInputs();
+    const sonderBereitstInputs = getSonderBereitstInputs();
     const istMaxValues = istInputs.map((el) => {
       const max = String(el.dataset.currentMax || el.dataset.baseMax || "").replace(".", ",");
       const ist = String(el.value || "").trim();
@@ -950,6 +1101,7 @@ document.addEventListener("DOMContentLoaded", () => {
       notes,
       sonderMaterials,
       sonderBereitstValues,
+      waRowCount: getWaDataRows().length,
       autoWvorbeRows: buildAutoWvorbeRows()
     };
   };
@@ -975,10 +1127,36 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  if (addWaRowBtn && waTableBody) {
+    addWaRowBtn.addEventListener("click", () => {
+      ensureWaRowCount(getWaDataRows().length + 1);
+      setReadonlyForPastDays();
+      saveAutoWvorbeRows();
+    });
+  }
+
+  if (removeWaRowBtn && waTableBody) {
+    removeWaRowBtn.addEventListener("click", () => {
+      ensureWaRowCount(getWaDataRows().length - 1);
+      setReadonlyForPastDays();
+      saveAutoWvorbeRows();
+    });
+  }
+
   const applySnapshot = (data) => {
     if (!data || typeof data !== "object") {
       return;
     }
+
+    if (Number.isFinite(Number(data.waRowCount))) {
+      ensureWaRowCount(Number(data.waRowCount));
+    }
+
+    const istInputs = getIstInputs();
+    const checks = getChecks();
+    const remarkInputs = getRemarkInputs();
+    const sonderMaterialInputs = getSonderMaterialInputs();
+    const sonderBereitstInputs = getSonderBereitstInputs();
 
     if (Array.isArray(data.istMaxValues)) {
       istInputs.forEach((input, index) => {
@@ -1331,17 +1509,17 @@ document.addEventListener("DOMContentLoaded", () => {
   const setReadonlyForPastDays = () => {
     const isPastDay = selectedIso < todayIso && !canEditPastDays();
 
-    istInputs.forEach((input) => {
+    getIstInputs().forEach((input) => {
       input.readOnly = isPastDay;
       input.classList.toggle("locked-field", isPastDay);
     });
 
-    checks.forEach((check) => {
+    getChecks().forEach((check) => {
       check.disabled = isPastDay;
       check.classList.toggle("locked-field", isPastDay);
     });
 
-    remarkInputs.forEach((input) => {
+    getRemarkInputs().forEach((input) => {
       input.readOnly = isPastDay;
       input.classList.toggle("locked-field", isPastDay);
     });
@@ -1353,6 +1531,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (saveBtn) {
       saveBtn.disabled = isPastDay;
+    }
+    if (addWaRowBtn) {
+      addWaRowBtn.disabled = isPastDay;
+    }
+    if (removeWaRowBtn) {
+      const noRemovableRows = getWaDataRows().length <= 5;
+      removeWaRowBtn.disabled = isPastDay || noRemovableRows;
     }
   };
 
@@ -1581,9 +1766,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const loadBtnLocal = document.getElementById(config.loadBtnId);
     const statusEl = document.getElementById(config.statusId);
     const addRowBtn = document.getElementById(config.addRowBtnId);
+    const removeRowBtn = document.getElementById(config.removeRowBtnId);
     const backBtn = document.getElementById(config.backBtnId);
     const addRowLine = table.querySelector(".add-row-line");
     let hasUnsavedChanges = false;
+    let selectedRow = null;
     const initialRows = Array.from(table.querySelectorAll("tbody tr:not(.add-row-line)")).map((row) =>
       Array.from(row.querySelectorAll("td")).map((cell) => cell.textContent || "")
     );
@@ -1598,6 +1785,97 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const setDirty = (dirty) => {
       hasUnsavedChanges = dirty;
+    };
+
+    const isDataRow = (row) => !!row && row.tagName === "TR" && !row.classList.contains("add-row-line");
+
+    const getCellTextValue = (cell) => {
+      if (!cell) {
+        return "";
+      }
+      const clone = cell.cloneNode(true);
+      clone.querySelectorAll(".row-remove-inline").forEach((btn) => btn.remove());
+      return clone.textContent || "";
+    };
+
+    const selectRow = (row) => {
+      if (!config.enableInlineRowRemove) {
+        return;
+      }
+      if (selectedRow && selectedRow !== row) {
+        selectedRow.classList.remove("row-selected");
+      }
+      selectedRow = isDataRow(row) ? row : null;
+      if (selectedRow) {
+        selectedRow.classList.add("row-selected");
+      }
+      const isPastDay = selectedIso < todayIso && !canEditPastDays();
+      if (removeRowBtn) {
+        removeRowBtn.disabled = isPastDay || !selectedRow;
+      }
+    };
+
+    const attachInlineRemoveButton = (row) => {
+      if (!config.enableInlineRowRemove || !isDataRow(row)) {
+        return;
+      }
+      const targetCell = row.querySelector("td:last-child");
+      if (!targetCell || targetCell.querySelector(".row-remove-inline")) {
+        return;
+      }
+      const inlineBtn = document.createElement("button");
+      inlineBtn.type = "button";
+      inlineBtn.className = "row-remove-inline";
+      inlineBtn.textContent = "-";
+      inlineBtn.title = "Zeile entfernen";
+      inlineBtn.setAttribute("aria-label", "Diese Zeile entfernen");
+      inlineBtn.contentEditable = "false";
+      inlineBtn.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+      });
+      inlineBtn.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        row.remove();
+        setDirty(true);
+        const nextRow = table.querySelector("tbody tr:not(.add-row-line)");
+        selectRow(nextRow || null);
+        setReadonlyLocal();
+      });
+      targetCell.appendChild(inlineBtn);
+    };
+
+    const bindRowInteractions = (row) => {
+      if (!isDataRow(row)) {
+        return;
+      }
+      if (row.dataset.rowBound === "1") {
+        return;
+      }
+      row.dataset.rowBound = "1";
+      attachInlineRemoveButton(row);
+      row.addEventListener("click", (event) => {
+        if (event.target instanceof HTMLElement && event.target.closest(".row-remove-inline")) {
+          return;
+        }
+        selectRow(row);
+      });
+    };
+
+    const focusEditableCell = (cell) => {
+      if (!cell || cell.getAttribute("contenteditable") !== "true") {
+        return;
+      }
+      cell.focus();
+      const selection = window.getSelection();
+      if (!selection) {
+        return;
+      }
+      const range = document.createRange();
+      range.selectNodeContents(cell);
+      range.collapse(false);
+      selection.removeAllRanges();
+      selection.addRange(range);
     };
 
     const createRow = (values, isAutoGenerated = false) => {
@@ -1626,6 +1904,15 @@ document.addEventListener("DOMContentLoaded", () => {
       if (addRowBtn) {
         addRowBtn.disabled = isPastDay;
       }
+      if (removeRowBtn) {
+        removeRowBtn.disabled = isPastDay || !selectedRow;
+      }
+      if (config.enableInlineRowRemove) {
+        const inlineButtons = table.querySelectorAll(".row-remove-inline");
+        inlineButtons.forEach((btn) => {
+          btn.disabled = isPastDay;
+        });
+      }
       if (saveBtnLocal) {
         saveBtnLocal.disabled = isPastDay;
       }
@@ -1634,6 +1921,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const applyRows = (rows, autoRows = []) => {
       const existingRows = Array.from(table.querySelectorAll("tbody tr:not(.add-row-line)"));
       existingRows.forEach((row) => row.remove());
+      selectedRow = null;
 
       const hasManual = Array.isArray(rows) && rows.length > 0;
       const hasAuto = Array.isArray(autoRows) && autoRows.length > 0;
@@ -1643,6 +1931,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (addRowLine && addRowLine.parentNode) {
           addRowLine.parentNode.insertBefore(row, addRowLine);
         }
+        bindRowInteractions(row);
       });
 
       if (hasAuto) {
@@ -1651,9 +1940,12 @@ document.addEventListener("DOMContentLoaded", () => {
           if (addRowLine && addRowLine.parentNode) {
             addRowLine.parentNode.insertBefore(row, addRowLine);
           }
+          bindRowInteractions(row);
         });
       }
 
+      const firstRow = table.querySelector("tbody tr:not(.add-row-line)");
+      selectRow(firstRow || null);
       setReadonlyLocal();
     };
 
@@ -1662,7 +1954,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const filteredRows = excludeAutoGenerated
         ? rows.filter((row) => row.dataset.autoGenerated !== "1")
         : rows;
-      return filteredRows.map((row) => Array.from(row.querySelectorAll("td")).map((cell) => cell.textContent || ""));
+      return filteredRows.map((row) => Array.from(row.querySelectorAll("td")).map((cell) => getCellTextValue(cell)));
     };
 
     const normalizeRows = (rows) => {
@@ -1870,6 +2162,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const newRow = createRow([], false);
         if (addRowLine && addRowLine.parentNode) {
           addRowLine.parentNode.insertBefore(newRow, addRowLine);
+          bindRowInteractions(newRow);
+          selectRow(newRow);
           const isPastDay = selectedIso < todayIso && !canEditPastDays();
           newRow.querySelectorAll("td").forEach((cell) => {
             cell.contentEditable = isPastDay ? "false" : "true";
@@ -1881,6 +2175,22 @@ document.addEventListener("DOMContentLoaded", () => {
           }
         }
         setDirty(true);
+        setReadonlyLocal();
+      });
+    }
+
+    if (removeRowBtn) {
+      removeRowBtn.addEventListener("click", () => {
+        if (!selectedRow || !isDataRow(selectedRow)) {
+          return;
+        }
+        const next = selectedRow.nextElementSibling && !selectedRow.nextElementSibling.classList.contains("add-row-line")
+          ? selectedRow.nextElementSibling
+          : selectedRow.previousElementSibling;
+        selectedRow.remove();
+        setDirty(true);
+        selectRow(isDataRow(next) ? next : table.querySelector("tbody tr:not(.add-row-line)"));
+        setReadonlyLocal();
       });
     }
 
@@ -1893,6 +2203,22 @@ document.addEventListener("DOMContentLoaded", () => {
         setDirty(true);
       }
     });
+
+    if (config.enableInlineRowRemove) {
+      table.addEventListener("click", (event) => {
+        if (!(event.target instanceof HTMLElement)) {
+          return;
+        }
+        if (event.target.closest(".row-remove-inline")) {
+          return;
+        }
+        const cell = event.target.closest("td[contenteditable='true']");
+        if (!cell) {
+          return;
+        }
+        focusEditableCell(cell);
+      });
+    }
 
     if (saveBtnLocal) {
       saveBtnLocal.addEventListener("click", () => {
@@ -1971,6 +2297,8 @@ document.addEventListener("DOMContentLoaded", () => {
     loadBtnId: "wvorbeLoadBtn",
     statusId: "wvorbeStatus",
     addRowBtnId: "addWvorbeRowBtn",
+    removeRowBtnId: "removeWvorbeRowBtn",
+    enableInlineRowRemove: true,
     backBtnId: "wvorbeBackBtn",
     storagePrefix: "wvorbe",
     autoStoragePrefix: "wvorbe"
@@ -1982,6 +2310,8 @@ document.addEventListener("DOMContentLoaded", () => {
     loadBtnId: "weingLoadBtn",
     statusId: "weingStatus",
     addRowBtnId: "addWeingRowBtn",
+    removeRowBtnId: "removeWeingRowBtn",
+    enableInlineRowRemove: true,
     backBtnId: "weingBackBtn",
     storagePrefix: "weing"
   });

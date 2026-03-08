@@ -121,11 +121,13 @@ html, body {
 .wvorbe-page #wvorbeBackBtn,
 .wvorbe-page #wvorbePrintBtn,
 .wvorbe-page #addWvorbeRowBtn,
+.wvorbe-page #removeWvorbeRowBtn,
 .weing-page #weingSaveBtn,
 .weing-page #weingLoadBtn,
 .weing-page #weingBackBtn,
 .weing-page #weingPrintBtn,
-.weing-page #addWeingRowBtn {
+.weing-page #addWeingRowBtn,
+.weing-page #removeWeingRowBtn {
   background: #313131;
   border-color: #3a3a3a;
   color: #f5f5f5;
@@ -136,18 +138,22 @@ html, body {
 .wvorbe-page #wvorbeBackBtn:hover,
 .wvorbe-page #wvorbePrintBtn:hover,
 .wvorbe-page #addWvorbeRowBtn:hover,
+.wvorbe-page #removeWvorbeRowBtn:hover,
 .weing-page #weingSaveBtn:hover,
 .weing-page #weingLoadBtn:hover,
 .weing-page #weingBackBtn:hover,
 .weing-page #weingPrintBtn:hover,
-.weing-page #addWeingRowBtn:hover {
+.weing-page #addWeingRowBtn:hover,
+.weing-page #removeWeingRowBtn:hover {
   background: #3a3a3a;
 }
 
 .wvorbe-page #wvorbeSaveBtn:disabled,
 .wvorbe-page #addWvorbeRowBtn:disabled,
+.wvorbe-page #removeWvorbeRowBtn:disabled,
 .weing-page #weingSaveBtn:disabled,
-.weing-page #addWeingRowBtn:disabled {
+.weing-page #addWeingRowBtn:disabled,
+.weing-page #removeWeingRowBtn:disabled {
   background: #2a2a2a;
   border-color: #3a3a3a;
   color: #b7b7b7;
@@ -1173,7 +1179,23 @@ tbody tr.row-nv-done .max-suffix {
   padding: 5px 8px;
 }
 
-#addWvorbeRowBtn {
+.add-row-line .row-line-label {
+  margin: 0 8px 0 6px;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+#removeWaRowBtn {
+  margin-left: 8px;
+}
+
+#addWvorbeRowBtn,
+#removeWvorbeRowBtn,
+#addWeingRowBtn,
+#removeWeingRowBtn,
+#addWaRowBtn,
+#removeWaRowBtn {
   border: 1px solid var(--line);
   background: #1d2633;
   color: var(--text);
@@ -1187,21 +1209,57 @@ tbody tr.row-nv-done .max-suffix {
 }
 
 #addWvorbeRowBtn:hover,
-#addWeingRowBtn:hover {
+#removeWvorbeRowBtn:hover,
+#addWeingRowBtn:hover,
+#removeWeingRowBtn:hover,
+#addWaRowBtn:hover,
+#removeWaRowBtn:hover {
   background: #253145;
 }
 
-#addWeingRowBtn {
+#removeWvorbeRowBtn {
+  margin-left: 8px;
+}
+
+#removeWeingRowBtn {
+  margin-left: 8px;
+}
+
+.wvorbe-page .editable-grid-table tbody tr td:last-child,
+.weing-page .editable-grid-table tbody tr td:last-child {
+  position: relative;
+  padding-right: 26px;
+}
+
+.wvorbe-page .row-remove-inline,
+.weing-page .row-remove-inline {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
   border: 1px solid var(--line);
-  background: #1d2633;
-  color: var(--text);
-  border-radius: 8px;
-  min-width: 30px;
-  height: 28px;
-  font-size: 18px;
+  border-radius: 4px;
+  background: #3a2424;
+  color: #ffdede;
+  font-size: 13px;
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.wvorbe-page .editable-grid-table tbody tr.row-selected .row-remove-inline,
+.weing-page .editable-grid-table tbody tr.row-selected .row-remove-inline {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.wvorbe-page .editable-grid-table tbody tr.row-selected td,
+.weing-page .editable-grid-table tbody tr.row-selected td {
+  box-shadow: inset 0 0 0 1px #4f6d96;
 }
 
 .sub { margin-left: 6px; font-weight: 700; color: #b7cbff; }
@@ -1320,6 +1378,10 @@ footer {
   .wvorbe-page #wvorbeBackBtn,
   .wvorbe-page #wvorbeStatus,
   .wvorbe-page #addWvorbeRowBtn,
+  .wvorbe-page #removeWvorbeRowBtn,
+  .wvorbe-page .row-remove-inline,
+  .wvorbe-page .add-row-line,
+  .wvorbe-page .add-row-line .row-line-label,
   .wvorbe-page .top-actions {
     display: none !important;
     color: #000 !important;
@@ -1365,7 +1427,7 @@ footer {
   }
 
   .wvorbe-page .editable-grid-table tbody tr:last-child > * {
-    border-bottom: 0 !important;
+    border-bottom: 0.8px solid #000 !important;
   }
 
   .weing-page .page-wrap,
@@ -1383,6 +1445,10 @@ footer {
   .weing-page #weingBackBtn,
   .weing-page #weingStatus,
   .weing-page #addWeingRowBtn,
+  .weing-page #removeWeingRowBtn,
+  .weing-page .row-remove-inline,
+  .weing-page .add-row-line,
+  .weing-page .add-row-line .row-line-label,
   .weing-page .top-actions {
     display: none !important;
     color: #000 !important;
@@ -1428,6 +1494,6 @@ footer {
   }
 
   .weing-page .editable-grid-table tbody tr:last-child > * {
-    border-bottom: 0 !important;
+    border-bottom: 0.8px solid #000 !important;
   }
 }
