@@ -126,7 +126,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const todayDate = new Date();
   const todayIso = toIsoLocal(todayDate);
-  const appVersion = "1.0.32";
+  const appVersion = "1.0.33";
   const appVersionFile = "app-version.json";
   const selectedDateStateKey = "dpc:selectedDate";
   const uiSettingsKey = "dpc:settings";

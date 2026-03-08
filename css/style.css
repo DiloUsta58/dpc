@@ -1182,7 +1182,7 @@ tbody tr.row-nv-done .max-suffix {
 .add-row-line .row-line-label {
   margin: 0 8px 0 6px;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--fs-btn);
   font-weight: 600;
 }
 
@@ -1202,7 +1202,7 @@ tbody tr.row-nv-done .max-suffix {
   border-radius: 8px;
   min-width: 30px;
   height: 28px;
-  font-size: 18px;
+  font-size: var(--fs-btn);
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
@@ -1243,7 +1243,7 @@ tbody tr.row-nv-done .max-suffix {
   border-radius: 4px;
   background: #3a2424;
   color: #ffdede;
-  font-size: 13px;
+  font-size: var(--fs-btn);
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
@@ -1363,6 +1363,27 @@ footer {
     display: none;
   }
 
+  footer {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 16px !important;
+    margin-top: 6mm !important;
+    padding-top: 0 !important;
+    border-top: 0 !important;
+    color: #000 !important;
+  }
+
+  footer #kimlik,
+  footer #footerVersion {
+    display: inline-block !important;
+    color: #000 !important;
+  }
+
+  footer #lastUpdate {
+    display: none !important;
+  }
+
   .wvorbe-page .page-wrap,
   .wvorbe-page .page {
     background: #fff !important;
@@ -1371,7 +1392,6 @@ footer {
     border: 0 !important;
   }
 
-  .wvorbe-page footer,
   .wvorbe-page #wvorbePrintBtn,
   .wvorbe-page #wvorbeSaveBtn,
   .wvorbe-page #wvorbeLoadBtn,
@@ -1438,7 +1458,6 @@ footer {
     border: 0 !important;
   }
 
-  .weing-page footer,
   .weing-page #weingPrintBtn,
   .weing-page #weingSaveBtn,
   .weing-page #weingLoadBtn,
