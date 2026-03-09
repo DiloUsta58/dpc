@@ -1837,7 +1837,7 @@ document.addEventListener("DOMContentLoaded", () => {
       "0.6-1",
       "0.6-1.0",
       "ZFG",
-      "NABALOXNO113",
+      "NABALOX113",
       "F240",
       "F280",
       "Q1",
@@ -1847,7 +1847,7 @@ document.addEventListener("DOMContentLoaded", () => {
       "AMOSILFW4",
       "SF6000",
       "A800",
-      "NABALOXNO202",
+      "NABALOX202",
       "LUDOX"
     ]);
 
