@@ -126,7 +126,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const todayDate = new Date();
   const todayIso = toIsoLocal(todayDate);
-  const appVersion = "1.0.33";
+  const appVersion = "1.0.34";
   const appVersionFile = "app-version.json";
   const selectedDateStateKey = "dpc:selectedDate";
   const uiSettingsKey = "dpc:settings";
@@ -203,6 +203,7 @@ document.addEventListener("DOMContentLoaded", () => {
     dateTargets.forEach((el) => {
       el.textContent = label;
     });
+    updateWeingInfo();
   };
 
   const getBuildInfo = async () => {
@@ -1064,6 +1065,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const exportLocalFileBtn = document.getElementById("exportLocalFileBtn");
   const importLocalFileBtn = document.getElementById("importLocalFileBtn");
   const importFileInput = document.getElementById("importFileInput");
+  const weingInfoEl = document.getElementById("weingInfo");
   const addWaRowBtn = document.getElementById("addWaRowBtn");
   const removeWaRowBtn = document.getElementById("removeWaRowBtn");
   const notesCells = Array.from(document.querySelectorAll(".notes-table td[contenteditable='true']"));
@@ -1104,6 +1106,41 @@ document.addEventListener("DOMContentLoaded", () => {
       waRowCount: getWaDataRows().length,
       autoWvorbeRows: buildAutoWvorbeRows()
     };
+  };
+
+  const hasMeaningfulWeingRows = (rows) => {
+    if (!Array.isArray(rows)) {
+      return false;
+    }
+    return rows.some((row) => {
+      if (!Array.isArray(row)) {
+        return false;
+      }
+      // Neues Format (8 Spalten): nur fachliche Felder zählen, nicht die 3 Probe-Checkbox-Spalten.
+      if (row.length >= 8) {
+        return row.slice(3, 8).some((cell) => String(cell || "").trim() !== "");
+      }
+      // Altes Format (5 Spalten): normale Inhaltsprüfung.
+      return row.some((cell) => String(cell || "").trim() !== "");
+    });
+  };
+
+  const updateWeingInfo = () => {
+    if (!weingInfoEl) {
+      return;
+    }
+    try {
+      const raw = localStorage.getItem(`dpc:weing:${selectedIso}`);
+      if (!raw) {
+        weingInfoEl.hidden = true;
+        return;
+      }
+      const data = JSON.parse(raw);
+      const rows = Array.isArray(data?.rows) ? data.rows : [];
+      weingInfoEl.hidden = !hasMeaningfulWeingRows(rows);
+    } catch (error) {
+      weingInfoEl.hidden = true;
+    }
   };
 
   if (menuBtn && menuDropdown) {
@@ -1555,9 +1592,11 @@ document.addEventListener("DOMContentLoaded", () => {
       applySnapshot(JSON.parse(raw));
       applyDateBasedDefaults(selectedIso, false);
       setStatus(`Daten von ${selectedLabel} geladen`, false);
+      updateWeingInfo();
       return true;
     }
     setStatus(`Keine Daten für ${selectedLabel}`, true);
+    updateWeingInfo();
     return false;
   };
 
@@ -1771,9 +1810,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const addRowLine = table.querySelector(".add-row-line");
     let hasUnsavedChanges = false;
     let selectedRow = null;
-    const initialRows = Array.from(table.querySelectorAll("tbody tr:not(.add-row-line)")).map((row) =>
-      Array.from(row.querySelectorAll("td")).map((cell) => cell.textContent || "")
-    );
+    const supportsRowSelection = Boolean(removeRowBtn);
+    const columnDefs = Array.isArray(config.columnDefs) && config.columnDefs.length > 0
+      ? config.columnDefs
+      : ["text", "text", "text", "text", "text"];
 
     const setStatusLocal = (text, isError) => {
       if (!statusEl) {
@@ -1787,6 +1827,37 @@ document.addEventListener("DOMContentLoaded", () => {
       hasUnsavedChanges = dirty;
     };
 
+    const probeRequiredMaterials = new Set([
+      "0.1-0.15",
+      "0.25-0.50",
+      "0.25-0.5",
+      "0.5-1.0",
+      "0.5-1",
+      "14/28",
+      "0.6-1",
+      "0.6-1.0",
+      "ZFG",
+      "NABALOXNO113",
+      "F240",
+      "F280",
+      "Q1",
+      "COAL",
+      "RHOSEAL",
+      "RHOSEALHT",
+      "AMOSILFW4",
+      "SF6000",
+      "A800",
+      "NABALOXNO202",
+      "LUDOX"
+    ]);
+
+    const normalizeProbeMaterial = (value) => String(value || "")
+      .toUpperCase()
+      .replace(/,/g, ".")
+      .replace(/\s+/g, "")
+      .replace(/NO\./g, "NO")
+      .replace(/[^A-Z0-9./-]/g, "");
+
     const isDataRow = (row) => !!row && row.tagName === "TR" && !row.classList.contains("add-row-line");
 
     const getCellTextValue = (cell) => {
@@ -1798,8 +1869,28 @@ document.addEventListener("DOMContentLoaded", () => {
       return clone.textContent || "";
     };
 
+    const serializeRow = (row) => {
+      const cells = Array.from(row.querySelectorAll("td"));
+      if (columnDefs.length === 8 && cells.length === 5) {
+        return ["0", "0", "0", ...cells.map((cell) => getCellTextValue(cell))];
+      }
+      return columnDefs.map((def, index) => {
+        const cell = cells[index];
+        if (!cell) {
+          return "";
+        }
+        if (def === "check") {
+          const input = cell.querySelector("input[type='checkbox']");
+          return input && input.checked ? "1" : "0";
+        }
+        return getCellTextValue(cell);
+      });
+    };
+
+    const initialRows = Array.from(table.querySelectorAll("tbody tr:not(.add-row-line)")).map((row) => serializeRow(row));
+
     const selectRow = (row) => {
-      if (!config.enableInlineRowRemove) {
+      if (!supportsRowSelection) {
         return;
       }
       if (selectedRow && selectedRow !== row) {
@@ -1860,6 +1951,34 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         selectRow(row);
       });
+      updateProbeRowState(row);
+    };
+
+    const updateProbeRowState = (row) => {
+      if (!isDataRow(row) || config.storagePrefix !== "weing" || columnDefs.length !== 8) {
+        return;
+      }
+      const materialCell = row.querySelector("td:nth-child(5)");
+      const materialValue = String(materialCell?.textContent || "").trim();
+      const normalizedMaterial = normalizeProbeMaterial(materialValue);
+      const isRequired = materialValue !== "" && probeRequiredMaterials.has(normalizedMaterial);
+      const isPastDay = selectedIso < todayIso && !canEditPastDays();
+      const checks = row.querySelectorAll("td input.probe-check");
+      checks.forEach((check) => {
+        check.disabled = isPastDay || !isRequired;
+      });
+      row.classList.toggle("probe-not-required", !isRequired);
+
+      if (!isRequired) {
+        row.classList.remove("probe-done");
+        row.classList.remove("probe-pending");
+        return;
+      }
+      const firstDone = checks[0] && checks[0].checked;
+      const secondDone = checks[1] && checks[1].checked;
+      const done = Boolean(firstDone && secondDone);
+      row.classList.toggle("probe-done", done);
+      row.classList.toggle("probe-pending", !done);
     };
 
     const focusEditableCell = (cell) => {
@@ -1883,9 +2002,22 @@ document.addEventListener("DOMContentLoaded", () => {
       if (isAutoGenerated) {
         row.dataset.autoGenerated = "1";
       }
-      for (let i = 0; i < 5; i += 1) {
+      const normalizedValues = Array.isArray(values) ? values : [];
+      for (let i = 0; i < columnDefs.length; i += 1) {
+        const def = columnDefs[i];
         const td = document.createElement("td");
-        td.textContent = Array.isArray(values) && typeof values[i] === "string" ? values[i] : "";
+        const value = typeof normalizedValues[i] === "string" ? normalizedValues[i] : "";
+        if (def === "check") {
+          td.classList.add("probe-check-cell");
+          td.contentEditable = "false";
+          const check = document.createElement("input");
+          check.type = "checkbox";
+          check.className = "probe-check";
+          check.checked = value === "1" || value.toLowerCase() === "true" || value.toLowerCase() === "x";
+          td.appendChild(check);
+        } else {
+          td.textContent = value;
+        }
         row.appendChild(td);
       }
       return row;
@@ -1895,10 +2027,22 @@ document.addEventListener("DOMContentLoaded", () => {
       const isPastDay = selectedIso < todayIso && !canEditPastDays();
       const editableRows = table.querySelectorAll("tbody tr:not(.add-row-line)");
       editableRows.forEach((row) => {
-        row.querySelectorAll("td").forEach((cell) => {
+        row.querySelectorAll("td").forEach((cell, index) => {
+          const def = columnDefs[index] || "text";
+          if (def === "check") {
+            cell.contentEditable = "false";
+            const check = cell.querySelector("input[type='checkbox']");
+            if (check) {
+              check.disabled = isPastDay;
+              check.classList.toggle("locked-field", isPastDay);
+            }
+            cell.classList.toggle("locked-field", isPastDay);
+            return;
+          }
           cell.contentEditable = isPastDay ? "false" : "true";
           cell.classList.toggle("locked-field", isPastDay);
         });
+        updateProbeRowState(row);
       });
 
       if (addRowBtn) {
@@ -1954,14 +2098,47 @@ document.addEventListener("DOMContentLoaded", () => {
       const filteredRows = excludeAutoGenerated
         ? rows.filter((row) => row.dataset.autoGenerated !== "1")
         : rows;
-      return filteredRows.map((row) => Array.from(row.querySelectorAll("td")).map((cell) => getCellTextValue(cell)));
+      return filteredRows.map((row) => serializeRow(row));
     };
 
     const normalizeRows = (rows) => {
       if (!Array.isArray(rows)) {
         return [];
       }
-      return rows.filter((row) => Array.isArray(row)).map((row) => row.map((cell) => String(cell || "")));
+      const isCheckLike = (value) => {
+        const v = String(value || "").trim().toLowerCase();
+        return v === "" || v === "0" || v === "1" || v === "true" || v === "false" || v === "x";
+      };
+
+      const migrateWeingLegacyRow = (row) => {
+        const cells = row.map((cell) => String(cell || ""));
+        if (columnDefs.length !== 8) {
+          return cells;
+        }
+
+        // Altformat vor Proben-Spalten: [Abt, Material, Charge, Pal, Menge]
+        if (cells.length === 5) {
+          return ["0", "0", "0", ...cells];
+        }
+
+        if (cells.length < 8) {
+          return [...cells, ...Array.from({ length: 8 - cells.length }, () => "")];
+        }
+
+        // Bereits 8 Spalten, aber ggf. verschoben gespeichert (alte/beta Zwischenstände)
+        const firstThreeAreChecks = isCheckLike(cells[0]) && isCheckLike(cells[1]) && isCheckLike(cells[2]);
+        if (!firstThreeAreChecks) {
+          // Nimm die ersten 5 fachlichen Felder und mappe sie auf Abt..Menge
+          const business = cells.slice(0, 5);
+          return ["0", "0", "0", ...business];
+        }
+
+        return cells.slice(0, 8);
+      };
+
+      return rows
+        .filter((row) => Array.isArray(row))
+        .map((row) => migrateWeingLegacyRow(row));
     };
 
     const sortRowsByDept = (rows) => {
@@ -2075,9 +2252,9 @@ document.addEventListener("DOMContentLoaded", () => {
       if (raw) {
         const data = JSON.parse(raw);
         const manualRows = Array.isArray(data.rows) ? data.rows : [];
+        const normalizedManualRows = normalizeRows(manualRows);
         if (hasMeaningfulRows(manualRows)) {
           if (config.storagePrefix === "wvorbe" && hasMeaningfulRows(normalizedAutoRows)) {
-            const normalizedManualRows = normalizeRows(manualRows);
             const manualKeys = new Set(normalizedManualRows.map((row) => getRowKey(row)).filter((key) => key !== ""));
             const lockedMaterialKeys = new Set(
               normalizedManualRows
@@ -2110,7 +2287,9 @@ document.addEventListener("DOMContentLoaded", () => {
             setStatusLocal(`Daten + Auto-Daten von ${selectedLabel} geladen`, false);
             return true;
           }
-          const sortedManualRows = config.storagePrefix === "wvorbe" ? sortRowsByDept(normalizeRows(manualRows)) : manualRows;
+          const sortedManualRows = config.storagePrefix === "wvorbe"
+            ? sortRowsByDept(normalizedManualRows)
+            : normalizedManualRows;
           applyRows(sortedManualRows);
           setStatusLocal(`Daten von ${selectedLabel} geladen`, false);
           return true;
@@ -2200,25 +2379,43 @@ document.addEventListener("DOMContentLoaded", () => {
         if (row && row.dataset.autoGenerated === "1") {
           delete row.dataset.autoGenerated;
         }
+        if (row) {
+          updateProbeRowState(row);
+        }
         setDirty(true);
       }
     });
 
-    if (config.enableInlineRowRemove) {
-      table.addEventListener("click", (event) => {
-        if (!(event.target instanceof HTMLElement)) {
-          return;
-        }
-        if (event.target.closest(".row-remove-inline")) {
-          return;
-        }
-        const cell = event.target.closest("td[contenteditable='true']");
-        if (!cell) {
-          return;
-        }
-        focusEditableCell(cell);
-      });
-    }
+    table.addEventListener("change", (event) => {
+      if (!(event.target instanceof HTMLInputElement)) {
+        return;
+      }
+      if (event.target.type !== "checkbox") {
+        return;
+      }
+      const row = event.target.closest("tr");
+      if (row && row.dataset.autoGenerated === "1") {
+        delete row.dataset.autoGenerated;
+      }
+      if (row) {
+        updateProbeRowState(row);
+      }
+      setDirty(true);
+    });
+
+    table.addEventListener("click", (event) => {
+      if (!(event.target instanceof HTMLElement)) {
+        return;
+      }
+      if (event.target.closest(".row-remove-inline")) {
+        return;
+      }
+      const cell = event.target.closest("td[contenteditable='true']");
+      if (!cell) {
+        return;
+      }
+      focusEditableCell(cell);
+    });
 
     if (saveBtnLocal) {
       saveBtnLocal.addEventListener("click", () => {
@@ -2298,7 +2495,7 @@ document.addEventListener("DOMContentLoaded", () => {
     statusId: "wvorbeStatus",
     addRowBtnId: "addWvorbeRowBtn",
     removeRowBtnId: "removeWvorbeRowBtn",
-    enableInlineRowRemove: true,
+    enableInlineRowRemove: false,
     backBtnId: "wvorbeBackBtn",
     storagePrefix: "wvorbe",
     autoStoragePrefix: "wvorbe"
@@ -2311,9 +2508,10 @@ document.addEventListener("DOMContentLoaded", () => {
     statusId: "weingStatus",
     addRowBtnId: "addWeingRowBtn",
     removeRowBtnId: "removeWeingRowBtn",
-    enableInlineRowRemove: true,
+    enableInlineRowRemove: false,
     backBtnId: "weingBackBtn",
-    storagePrefix: "weing"
+    storagePrefix: "weing",
+    columnDefs: ["check", "check", "check", "text", "text", "text", "text", "text"]
   });
 });
 

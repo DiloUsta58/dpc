@@ -265,6 +265,35 @@ html, body {
   left: 0;
 }
 
+.index-page #weingInfo {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 4px 10px;
+  border: 1px solid #2f5a3a;
+  border-radius: 999px;
+  background: rgba(12, 52, 20, 0.85);
+  color: #f8f8f8;
+  font-size: var(--fs-info);
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.index-page #weingInfo[hidden] {
+  display: none !important;
+}
+
+.index-page #weingInfo img {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+}
+
 .menu-wrapper {
   position: relative;
   margin-right: 0;
@@ -1174,6 +1203,87 @@ tbody tr.row-nv-done .max-suffix {
   text-align: right;
 }
 
+.weing-page .weing-proben-table {
+  background: #272727;
+  border: 1px solid #3a3a3a;
+}
+
+.weing-page .weing-proben-table th,
+.weing-page .weing-proben-table td {
+  background: #272727;
+  color: #f5f5f5;
+  border: 1px solid #3a3a3a;
+}
+
+.weing-page .weing-proben-table thead th {
+  font-weight: 700;
+  background: #313131;
+}
+
+.weing-page .weing-proben-table .no-edit-hint {
+  font-size: 13px;
+  letter-spacing: 0.2px;
+  color: #cfd8e6;
+}
+
+.weing-page .weing-proben-table .probe-diagonal-cell {
+  position: relative;
+  height: 74px;
+  padding: 0;
+  overflow: hidden;
+  background: linear-gradient(45deg, transparent 49.4%, #3a3a3a 49.4%, #3a3a3a 50.6%, transparent 50.6%), #272727;
+}
+
+.weing-page .weing-proben-table .probe-lbl {
+  position: absolute;
+  font-style: italic;
+  font-weight: 500;
+  font-size: 12px;
+  white-space: nowrap;
+  line-height: 1;
+  color: #d7e2f7;
+  letter-spacing: 0;
+  left: 6px;
+  top: 38px;
+  transform: rotate(45deg);
+}
+
+.weing-page .weing-proben-table .probe-check-cell {
+  text-align: center !important;
+  vertical-align: middle;
+}
+
+.weing-page .weing-proben-table .probe-check {
+  width: 14px;
+  height: 14px;
+  accent-color: #b7cbff;
+}
+
+.weing-page .weing-proben-table tbody tr.probe-done td:nth-child(-n+3) {
+  background: var(--tbltd-bg) !important;
+  color: #fff !important;
+}
+
+.weing-page .weing-proben-table tbody tr.probe-pending td:nth-child(-n+3) {
+  background: var(--tblN-L-bg) !important;
+  color: #fff !important;
+}
+
+.weing-page .weing-proben-table tbody tr.probe-not-required td:nth-child(-n+3) input.probe-check {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.weing-page .weing-proben-table th:nth-child(-n+7),
+.weing-page .weing-proben-table td:nth-child(-n+7) {
+  text-align: center;
+}
+
+.weing-page .weing-proben-table th:nth-child(8),
+.weing-page .weing-proben-table td:nth-child(8) {
+  text-align: right;
+}
+
 .add-row-line td {
   text-align: center;
   padding: 5px 8px;
@@ -1339,6 +1449,14 @@ footer {
   #saveStatus {
     width: 100%;
     text-align: left;
+  }
+
+  .index-page #weingInfo {
+    position: static;
+    transform: none;
+    width: 100%;
+    text-align: center;
+    margin-top: 4px;
   }
 }
 
@@ -1510,6 +1628,22 @@ footer {
   .weing-page tbody tr.row-nv-done td {
     background: #fff !important;
     color: #000 !important;
+  }
+
+  .weing-page .weing-proben-table .probe-diagonal-cell {
+    background:
+      linear-gradient(45deg, transparent 49.4%, #000 49.4%, #000 50.6%, transparent 50.6%),
+      #fff !important;
+  }
+
+  .weing-page .weing-proben-table .probe-lbl,
+  .weing-page .weing-proben-table .no-edit-hint {
+    color: #000 !important;
+  }
+
+  .weing-page .weing-proben-table .probe-check {
+    accent-color: #000 !important;
+    filter: grayscale(1) contrast(1.2);
   }
 
   .weing-page .editable-grid-table tbody tr:last-child > * {
