@@ -24,37 +24,49 @@
         <button id="weingPrintBtn" type="button" onclick="window.print()">Drucken</button>
       </div>
     </div>
-    <h1>Material Wahreneingang: ↢ Lieferung</h1>
+    <div class="weing-infobox">
+      <div class="weing-infobox-title">INFO</div>
+      <div class="weing-infobox-section">
+        <div class="weing-infobox-heading">Zum Labor</div>
+        <div class="weing-infobox-text">
+          Mischproben: 0,5-1 / 14/28 (0,6-1) / 0,1-0,15 / 0,25-0,5 / Q1 / F240 / F280 / Nabalox / Rhoseal / Rohseal HT / Ludox / A800 / SF6000 /
+          <span class="weing-infobox-warn">Nur wenn die Charge nicht vorhanden ist! ( Nach eingabe der Charge bitte  "N" eingeben!" )</span>
+        </div>
+        <div class="weing-infobox-text">Proben: F240 / F280 / Nabalox / Q1 / Rhoseal / Rohseal HT / SF6000 / AMOSIL FW4 / CoAl </div>
+      </div>
+      <div class="weing-infobox-section">
+        <div class="weing-infobox-heading">Zur Apt. KE</div>
+        <div class="weing-infobox-text">Proben: 0,5-1 / 14/28 (0,6-1) / 0,1-0,15 / 0,25-0,5</div>
+      </div>
+    </div>
 
     <table id="weingTable" class="editable-grid-table weing-proben-table">
+      <thead>
+      <tr>
+        <th colspan="3" class="table-title">Proben</th>
+        <th colspan="5" class="table-title">Material Wahreneingang: ↢ Lieferung</th>
+      </tr>
+      </thead>
       <colgroup>
         <col style="width:6%">
         <col style="width:6%">
         <col style="width:6%">
-        <col style="width:10%">
-        <col style="width:22%">
+        <col style="width:8%">
         <col style="width:24%">
-        <col style="width:12%">
-        <col style="width:14%">
+        <col style="width:24%">
+        <col style="width:8%">
+        <col style="width:18%">
       </colgroup>
       <thead>
         <tr>
-          <th colspan="3">Proben</th>
+          <th class="probe-diagonal-cell"><span class="probe-lbl">Labor</span></th>
+          <th class="probe-diagonal-cell"><span class="probe-lbl">Abt. KE</span></th>
+          <th class="probe-diagonal-cell"><span class="probe-lbl">Mischprobe</span></th>
           <th>Abt.</th>
           <th>Material</th>
           <th>Charge</th>
           <th>Pal. Nr.</th>
           <th><span class="red">Menge / Stk.</span></th>
-        </tr>
-        <tr>
-          <th class="probe-diagonal-cell"><span class="probe-lbl">Labor</span></th>
-          <th class="probe-diagonal-cell"><span class="probe-lbl">Abt. KE</span></th>
-          <th class="probe-diagonal-cell"><span class="probe-lbl">Mischprobe</span></th>
-          <th class="no-edit-hint"></th>
-          <th class="no-edit-hint"></th>
-          <th class="no-edit-hint"></th>
-          <th class="no-edit-hint"></th>
-          <th class="no-edit-hint"></th>
         </tr>
       </thead>
       <tbody>
@@ -102,4 +114,3 @@
   <script src="js/dpc.js" defer></script>
 </body>
 </html>
-

@@ -1827,7 +1827,7 @@ document.addEventListener("DOMContentLoaded", () => {
       hasUnsavedChanges = dirty;
     };
 
-    const probeRequiredMaterials = new Set([
+    const laborMischprobeMaterials = new Set([
       "0.1-0.15",
       "0.25-0.50",
       "0.25-0.5",
@@ -1836,19 +1836,38 @@ document.addEventListener("DOMContentLoaded", () => {
       "14/28",
       "0.6-1",
       "0.6-1.0",
-      "ZFG",
-      "NABALOX113",
+      "Q1",
       "F240",
       "F280",
-      "Q1",
-      "COAL",
+      "NABALOX",
       "RHOSEAL",
       "RHOSEALHT",
-      "AMOSILFW4",
-      "SF6000",
+      "LUDOX",
       "A800",
-      "NABALOX202",
-      "LUDOX"
+      "SF6000"
+    ]);
+
+    const laborProbeMaterials = new Set([
+      "F240",
+      "F280",
+      "NABALOX",
+      "Q1",
+      "RHOSEAL",
+      "RHOSEALHT",
+      "SF6000",
+      "AMOSILFW4",
+      "COAL"
+    ]);
+
+    const keProbeMaterials = new Set([
+      "0.1-0.15",
+      "0.25-0.50",
+      "0.25-0.5",
+      "0.5-1.0",
+      "0.5-1",
+      "14/28",
+      "0.6-1",
+      "0.6-1.0"
     ]);
 
     const normalizeProbeMaterial = (value) => String(value || "")
@@ -1857,6 +1876,18 @@ document.addEventListener("DOMContentLoaded", () => {
       .replace(/\s+/g, "")
       .replace(/NO\./g, "NO")
       .replace(/[^A-Z0-9./-]/g, "");
+
+    const normalizeToKey = (normalized) => {
+      if (normalized.startsWith("NABALOX")) {
+        return "NABALOX";
+      }
+      return normalized;
+    };
+
+    const isInMaterialSet = (normalized, set) => {
+      const key = normalizeToKey(normalized);
+      return set.has(key);
+    };
 
     const isDataRow = (row) => !!row && row.tagName === "TR" && !row.classList.contains("add-row-line");
 
@@ -1959,24 +1990,39 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
       const materialCell = row.querySelector("td:nth-child(5)");
+      const chargeCell = row.querySelector("td:nth-child(6)");
       const materialValue = String(materialCell?.textContent || "").trim();
+      const chargeValue = String(chargeCell?.textContent || "").trim();
       const normalizedMaterial = normalizeProbeMaterial(materialValue);
-      const isRequired = materialValue !== "" && probeRequiredMaterials.has(normalizedMaterial);
       const isPastDay = selectedIso < todayIso && !canEditPastDays();
       const checks = row.querySelectorAll("td input.probe-check");
-      checks.forEach((check) => {
-        check.disabled = isPastDay || !isRequired;
-      });
-      row.classList.toggle("probe-not-required", !isRequired);
 
-      if (!isRequired) {
+      const laborRequired = materialValue !== "" && isInMaterialSet(normalizedMaterial, laborProbeMaterials);
+      const keRequired = materialValue !== "" && isInMaterialSet(normalizedMaterial, keProbeMaterials);
+      const mischRequired = materialValue !== ""
+        && isInMaterialSet(normalizedMaterial, laborMischprobeMaterials)
+        && /n/i.test(chargeValue);
+
+      const requirements = [laborRequired, keRequired, mischRequired];
+      const anyRequired = requirements.some(Boolean);
+
+      checks.forEach((check, index) => {
+        const required = requirements[index] || false;
+        check.disabled = isPastDay || !required;
+        if (!required) {
+          check.checked = false;
+        }
+        check.style.visibility = required ? "visible" : "hidden";
+      });
+
+      row.classList.toggle("probe-not-required", !anyRequired);
+      if (!anyRequired) {
         row.classList.remove("probe-done");
         row.classList.remove("probe-pending");
         return;
       }
-      const firstDone = checks[0] && checks[0].checked;
-      const secondDone = checks[1] && checks[1].checked;
-      const done = Boolean(firstDone && secondDone);
+
+      const done = requirements.every((required, index) => !required || (checks[index] && checks[index].checked));
       row.classList.toggle("probe-done", done);
       row.classList.toggle("probe-pending", !done);
     };

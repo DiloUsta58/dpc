@@ -27,6 +27,8 @@
   --fs-info: 12px;
   --fs-th: 14px;
   --fs-td: 14px;
+  --bgClR: #3f0101;
+  --bgClG: #013f0d;
 }
 
 * { box-sizing: border-box; }
@@ -1282,6 +1284,52 @@ tbody tr.row-nv-done .max-suffix {
 .weing-page .weing-proben-table th:nth-child(8),
 .weing-page .weing-proben-table td:nth-child(8) {
   text-align: right;
+}
+
+.weing-page .weing-infobox {
+  margin: 8px 0 14px;
+  padding: 10px 12px;
+  border: 1px solid #2b4c31;
+  border-radius: 10px;
+  background: #233026;
+  color: #f5f5f5;
+  box-shadow: 0 0 0 2px #2b4c31, 0 12px 26px rgba(0, 0, 0, 0.35);
+}
+
+.weing-page .weing-infobox-title {
+  font-weight: 700;
+  font-size: var(--fs-info);
+  letter-spacing: 0.6px;
+  color: #dbe7ff;
+  margin-bottom: 6px;
+}
+
+.weing-page .weing-infobox-section + .weing-infobox-section {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #2b4c31;
+}
+
+.weing-page .weing-infobox-heading {
+  font-weight: 700;
+  font-size: var(--fs-info);
+  margin-bottom: 4px;
+}
+
+.weing-page .weing-infobox-text {
+  font-size: var(--fs-info);
+  line-height: 1.35;
+  color: #e6f0ea;
+}
+
+.weing-page .weing-infobox-warn {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--bgClR);
+  color: #fff;
+  font-weight: 700;
 }
 
 .add-row-line td {
