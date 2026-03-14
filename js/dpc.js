@@ -2647,6 +2647,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const previewBody = document.getElementById("weingDataPreviewBody");
     const backBtn = document.getElementById("weingDataBackBtn");
     const openWeingLink = document.getElementById("weingDataOpenWeing");
+    const kwTitle = document.getElementById("weingDataKwTitle");
     if (!kwSelect || !daysBody || !previewBody) {
       return;
     }
@@ -2762,6 +2763,9 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     const renderDays = (week) => {
+      if (kwTitle) {
+        kwTitle.textContent = `Kalenderwoche (${String(week).padStart(2, "0")})`;
+      }
       daysBody.innerHTML = "";
       const days = getWorkWeekByIso(currentYear, week);
       const weekdays = ["Mo", "Di", "Mi", "Do", "Fr"];
