@@ -126,7 +126,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const todayDate = new Date();
   const todayIso = toIsoLocal(todayDate);
-  const appVersion = "1.0.34";
+  const appVersion = "1.0.35";
   const appVersionFile = "app-version.json";
   const selectedDateStateKey = "dpc:selectedDate";
   const uiSettingsKey = "dpc:settings";
@@ -1844,7 +1844,8 @@ document.addEventListener("DOMContentLoaded", () => {
       "RHOSEALHT",
       "LUDOX",
       "A800",
-      "SF6000"
+      "SF6000",
+      "ZFG"
     ]);
 
     const laborProbeMaterials = new Set([
@@ -1856,7 +1857,8 @@ document.addEventListener("DOMContentLoaded", () => {
       "RHOSEALHT",
       "SF6000",
       "AMOSILFW4",
-      "COAL"
+      "COAL",
+      "ZFG"
     ]);
 
     const keProbeMaterials = new Set([
@@ -2225,6 +2227,57 @@ document.addEventListener("DOMContentLoaded", () => {
         .map((item) => item.row);
     };
 
+    const sortRowsByCharge = (rows) => {
+      if (!Array.isArray(rows)) {
+        return [];
+      }
+      return rows
+        .map((row, index) => ({ row, index }))
+        .sort((a, b) => {
+          const chargeA = String(a.row[5] || "").trim();
+          const chargeB = String(b.row[5] || "").trim();
+          const aEmpty = chargeA === "";
+          const bEmpty = chargeB === "";
+          if (aEmpty && !bEmpty) {
+            return 1;
+          }
+          if (!aEmpty && bEmpty) {
+            return -1;
+          }
+          const numA = Number.parseFloat(chargeA.replace(",", "."));
+          const numB = Number.parseFloat(chargeB.replace(",", "."));
+          const aIsNum = Number.isFinite(numA) && String(numA) === chargeA.replace(",", ".");
+          const bIsNum = Number.isFinite(numB) && String(numB) === chargeB.replace(",", ".");
+          if (aIsNum && bIsNum) {
+            if (numA < numB) return -1;
+            if (numA > numB) return 1;
+          } else {
+            const cmp = chargeA.localeCompare(chargeB, "de");
+            if (cmp !== 0) return cmp;
+          }
+
+          const palA = String(a.row[6] || "").trim();
+          const palB = String(b.row[6] || "").trim();
+          const palAEmpty = palA === "";
+          const palBEmpty = palB === "";
+          if (palAEmpty && !palBEmpty) return 1;
+          if (!palAEmpty && palBEmpty) return -1;
+          const palNumA = Number.parseFloat(palA.replace(",", "."));
+          const palNumB = Number.parseFloat(palB.replace(",", "."));
+          const palAIsNum = Number.isFinite(palNumA) && String(palNumA) === palA.replace(",", ".");
+          const palBIsNum = Number.isFinite(palNumB) && String(palNumB) === palB.replace(",", ".");
+          if (palAIsNum && palBIsNum) {
+            if (palNumA < palNumB) return -1;
+            if (palNumA > palNumB) return 1;
+          } else {
+            const palCmp = palA.localeCompare(palB, "de");
+            if (palCmp !== 0) return palCmp;
+          }
+          return a.index - b.index;
+        })
+        .map((item) => item.row);
+    };
+
     const getRowKey = (row) => {
       if (!Array.isArray(row)) {
         return "";
@@ -2335,14 +2388,16 @@ document.addEventListener("DOMContentLoaded", () => {
           }
           const sortedManualRows = config.storagePrefix === "wvorbe"
             ? sortRowsByDept(normalizedManualRows)
-            : normalizedManualRows;
+            : (config.storagePrefix === "weing" ? sortRowsByCharge(normalizedManualRows) : normalizedManualRows);
           applyRows(sortedManualRows);
           setStatusLocal(`Daten von ${selectedLabel} geladen`, false);
           return true;
         }
 
         if (hasMeaningfulRows(normalizedAutoRows)) {
-          const sortedAutoRows = config.storagePrefix === "wvorbe" ? sortRowsByDept(normalizedAutoRows) : normalizedAutoRows;
+          const sortedAutoRows = config.storagePrefix === "wvorbe"
+            ? sortRowsByDept(normalizedAutoRows)
+            : (config.storagePrefix === "weing" ? sortRowsByCharge(normalizedAutoRows) : normalizedAutoRows);
           applyRows(sortedAutoRows);
           setStatusLocal(`Auto-Daten von ${selectedLabel} geladen`, false);
           return true;
@@ -2350,7 +2405,9 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       if (hasMeaningfulRows(normalizedAutoRows)) {
-        const sortedAutoRows = config.storagePrefix === "wvorbe" ? sortRowsByDept(normalizedAutoRows) : normalizedAutoRows;
+        const sortedAutoRows = config.storagePrefix === "wvorbe"
+          ? sortRowsByDept(normalizedAutoRows)
+          : (config.storagePrefix === "weing" ? sortRowsByCharge(normalizedAutoRows) : normalizedAutoRows);
         applyRows(sortedAutoRows);
         setStatusLocal(`Auto-Daten von ${selectedLabel} geladen`, false);
         return true;
@@ -2559,6 +2616,199 @@ document.addEventListener("DOMContentLoaded", () => {
     storagePrefix: "weing",
     columnDefs: ["check", "check", "check", "text", "text", "text", "text", "text"]
   });
+
+  const initWeingBackLink = () => {
+    const weingBackBtn = document.getElementById("weingBackBtn");
+    const weingDataBackBtn = document.getElementById("weingDataBackBtn");
+    if (!weingBackBtn || !weingDataBackBtn) {
+      return;
+    }
+    const returnFlag = localStorage.getItem("dpc:weing:returnToPreview") === "1";
+    if (returnFlag) {
+      weingBackBtn.hidden = true;
+      weingDataBackBtn.hidden = false;
+      weingDataBackBtn.addEventListener("click", () => {
+        const iso = localStorage.getItem("dpc:weing:returnToPreviewDate") || "";
+        localStorage.setItem(selectedDateStateKey, iso);
+        localStorage.removeItem("dpc:weing:returnToPreview");
+        window.location.href = "weingData.html";
+      });
+    } else {
+      weingBackBtn.hidden = false;
+      weingDataBackBtn.hidden = true;
+    }
+  };
+
+  initWeingBackLink();
+
+  const initWeingDataPage = () => {
+    const kwSelect = document.getElementById("weingDataKwSelect");
+    const daysBody = document.getElementById("weingDataDaysBody");
+    const previewBody = document.getElementById("weingDataPreviewBody");
+    const backBtn = document.getElementById("weingDataBackBtn");
+    const openWeingLink = document.getElementById("weingDataOpenWeing");
+    if (!kwSelect || !daysBody || !previewBody) {
+      return;
+    }
+
+    const currentWeek = getIsoWeekNumber(todayDate);
+    const currentYear = todayDate.getFullYear();
+    const maxWeek = Math.min(getIsoWeeksInYear(currentYear), currentWeek);
+
+    kwSelect.innerHTML = "";
+    for (let week = 1; week <= maxWeek; week += 1) {
+      const option = document.createElement("option");
+      option.value = String(week);
+      option.textContent = `KW ${String(week).padStart(2, "0")}`;
+      kwSelect.appendChild(option);
+    }
+    kwSelect.value = String(currentWeek);
+
+    const normalizeWeingRow = (row) => {
+      if (!Array.isArray(row)) {
+        return null;
+      }
+      if (row.length >= 8) {
+        return row.slice(3, 8).map((cell) => String(cell || ""));
+      }
+      if (row.length === 5) {
+        return row.map((cell) => String(cell || ""));
+      }
+      if (row.length < 5) {
+        return [...row.map((cell) => String(cell || "")), ...Array.from({ length: 5 - row.length }, () => "")];
+      }
+      return row.slice(0, 5).map((cell) => String(cell || ""));
+    };
+
+    const getMeaningfulWeingRows = (rows) => {
+      if (!Array.isArray(rows)) {
+        return [];
+      }
+      return rows
+        .map(normalizeWeingRow)
+        .filter(Boolean)
+        .filter((row) => row.some((cell) => String(cell || "").trim() !== ""));
+    };
+
+    const getWeingRowsForIso = (isoDate) => {
+      const key = `dpc:weing:${isoDate}`;
+      const raw = localStorage.getItem(key);
+      try {
+        if (raw) {
+          const data = JSON.parse(raw);
+          return getMeaningfulWeingRows(Array.isArray(data.rows) ? data.rows : []);
+        }
+
+        const parseDeToIso = (value) => {
+          const match = String(value || "").trim().match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+          if (!match) {
+            return null;
+          }
+          const [, dd, mm, yyyy] = match;
+          return `${yyyy}-${mm}-${dd}`;
+        };
+
+        for (let i = 0; i < localStorage.length; i += 1) {
+          const storageKey = localStorage.key(i);
+          if (!storageKey || !storageKey.startsWith("dpc:weing:")) {
+            continue;
+          }
+          const value = localStorage.getItem(storageKey);
+          if (!value) {
+            continue;
+          }
+          const data = JSON.parse(value);
+          const payloadIso = parseDeToIso(data?.date);
+          if (payloadIso === isoDate) {
+            return getMeaningfulWeingRows(Array.isArray(data.rows) ? data.rows : []);
+          }
+        }
+        return [];
+      } catch (error) {
+        return [];
+      }
+    };
+
+    const renderPreview = (isoDate) => {
+      previewBody.innerHTML = "";
+      const rows = getWeingRowsForIso(isoDate);
+      if (openWeingLink) {
+        openWeingLink.setAttribute("aria-disabled", rows.length === 0 ? "true" : "false");
+        openWeingLink.classList.toggle("disabled", rows.length === 0);
+        openWeingLink.onclick = rows.length === 0
+          ? (event) => event.preventDefault()
+          : () => {
+            localStorage.setItem(selectedDateStateKey, isoDate);
+            localStorage.setItem("dpc:weing:returnToPreview", "1");
+            localStorage.setItem("dpc:weing:returnToPreviewDate", isoDate);
+          };
+      }
+      if (rows.length === 0) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = "<td class=\"weing-data-note\" colspan=\"5\">Keine Daten vorhanden</td>";
+        previewBody.appendChild(tr);
+        return;
+      }
+      rows.slice(0, 10).forEach((row) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = row.map((cell) => `<td>${cell}</td>`).join("");
+        previewBody.appendChild(tr);
+      });
+      if (rows.length > 10) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = "<td class=\"weing-data-note\" colspan=\"5\">Mehrere Eingänge vorhanden ...</td>";
+        previewBody.appendChild(tr);
+      }
+    };
+
+    const renderDays = (week) => {
+      daysBody.innerHTML = "";
+      const days = getWorkWeekByIso(currentYear, week);
+      const weekdays = ["Mo", "Di", "Mi", "Do", "Fr"];
+      let firstWithData = null;
+      days.forEach((date, index) => {
+        const iso = toIsoLocal(date);
+        const tr = document.createElement("tr");
+        tr.className = "weing-data-day";
+        tr.dataset.iso = iso;
+        tr.innerHTML = `<td>${weekdays[index]} ${deDateFormatter.format(date)}</td>`;
+        const hasData = getWeingRowsForIso(iso).length > 0;
+        tr.classList.toggle("has-data", hasData);
+        if (hasData && !firstWithData) {
+          firstWithData = tr;
+        }
+        tr.addEventListener("click", () => {
+          Array.from(daysBody.querySelectorAll("tr")).forEach((row) => row.classList.remove("active"));
+          tr.classList.add("active");
+          renderPreview(iso);
+        });
+        daysBody.appendChild(tr);
+      });
+      const initial = firstWithData || daysBody.querySelector("tr");
+      if (initial) {
+        initial.classList.add("active");
+        renderPreview(initial.dataset.iso || toIsoLocal(days[0]));
+      }
+    };
+
+    kwSelect.addEventListener("change", () => {
+      const week = Number.parseInt(kwSelect.value, 10);
+      if (!Number.isFinite(week)) {
+        return;
+      }
+      renderDays(week);
+    });
+
+    if (backBtn) {
+      backBtn.addEventListener("click", () => {
+        window.location.href = "index.html";
+      });
+    }
+
+    renderDays(currentWeek);
+  };
+
+  initWeingDataPage();
 });
 
 function printWvorbe() {
