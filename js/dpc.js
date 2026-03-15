@@ -2813,6 +2813,298 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   initWeingDataPage();
+
+  const initChargenDataPage = () => {
+    const tableBody = document.getElementById("chargeTableBody");
+    const backBtn = document.getElementById("chargenBackBtn");
+    const addBtn = document.getElementById("chargenAddBtn");
+    const removeBtn = document.getElementById("chargenRemoveBtn");
+    const searchInput = document.getElementById("chargeSearch");
+    if (!tableBody) {
+      return;
+    }
+
+    const normalizeWeingRow = (row) => {
+      if (!Array.isArray(row)) {
+        return null;
+      }
+      if (row.length >= 8) {
+        return row.slice(3, 8).map((cell) => String(cell || ""));
+      }
+      if (row.length === 5) {
+        return row.map((cell) => String(cell || ""));
+      }
+      if (row.length < 5) {
+        return [...row.map((cell) => String(cell || "")), ...Array.from({ length: 5 - row.length }, () => "")];
+      }
+      return row.slice(0, 5).map((cell) => String(cell || ""));
+    };
+
+    const parseDeToIso = (value) => {
+      const match = String(value || "").trim().match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+      if (!match) {
+        return "";
+      }
+      const [, dd, mm, yyyy] = match;
+      return `${yyyy}-${mm}-${dd}`;
+    };
+
+    const parseChargeNumber = (value) => {
+      const cleaned = String(value || "").trim();
+      const num = Number.parseFloat(cleaned.replace(",", "."));
+      return Number.isFinite(num) ? num : null;
+    };
+
+    const normalizeChargeKey = (value) => String(value || "").trim().toLowerCase().replace(/\s+/g, "");
+    const rowsByCharge = new Map();
+
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const storageKey = localStorage.key(i);
+      if (!storageKey || !storageKey.startsWith("dpc:weing:")) {
+        continue;
+      }
+      const raw = localStorage.getItem(storageKey);
+      if (!raw) {
+        continue;
+      }
+      try {
+        const data = JSON.parse(raw);
+        const dateLabel = data && typeof data.date === "string" ? data.date : "";
+        const isoDate = parseDeToIso(dateLabel) || storageKey.replace("dpc:weing:", "");
+        const rows = Array.isArray(data?.rows) ? data.rows : [];
+        rows.forEach((row) => {
+          const normalized = normalizeWeingRow(row);
+          if (!normalized) {
+            return;
+          }
+          const [abt, material, charge] = normalized;
+          const rawCharge = String(charge || "").trim();
+          const chargeKey = normalizeChargeKey(rawCharge);
+          if (!chargeKey) {
+            return;
+          }
+          if (rowsByCharge.has(chargeKey)) {
+            return;
+          }
+          rowsByCharge.set(chargeKey, {
+            charge: rawCharge,
+            material: String(material || "").trim(),
+            date: isoDate ? deDateFormatter.format(fromIsoLocal(isoDate)) : dateLabel
+          });
+        });
+      } catch (error) {
+        // ignore malformed entries
+      }
+    }
+
+    const entries = Array.from(rowsByCharge.values());
+    entries.sort((a, b) => {
+      const numA = parseChargeNumber(a.charge);
+      const numB = parseChargeNumber(b.charge);
+      if (numA !== null && numB !== null && numA !== numB) {
+        return numA - numB;
+      }
+      return a.charge.localeCompare(b.charge, "de");
+    });
+
+    const manualKey = "dpc:chargen:manual";
+    const loadManual = () => {
+      try {
+        const raw = localStorage.getItem(manualKey);
+        if (!raw) {
+          return [];
+        }
+        const data = JSON.parse(raw);
+        return Array.isArray(data)
+          ? data.map((row) => ({ ...row, _manual: true }))
+          : [];
+      } catch (error) {
+        return [];
+      }
+    };
+    const saveManual = (rows) => {
+      try {
+        localStorage.setItem(manualKey, JSON.stringify(rows));
+      } catch (error) {
+        // ignore
+      }
+    };
+
+    const manualRows = loadManual();
+    const manualByCharge = new Map();
+    const manualWithoutCharge = [];
+    manualRows.forEach((row) => {
+      const chargeRaw = String(row?.charge || "").trim();
+      const key = normalizeChargeKey(chargeRaw);
+      if (!key) {
+        manualWithoutCharge.push(row);
+        return;
+      }
+      if (!manualByCharge.has(key)) {
+        manualByCharge.set(key, row);
+      }
+    });
+
+    const dateSortable = (value) => {
+      const iso = parseDeToIso(value);
+      return iso || "";
+    };
+
+    const entriesFiltered = entries
+      .filter((entry) => !manualByCharge.has(normalizeChargeKey(entry.charge)));
+    const manualEntries = [...manualByCharge.values(), ...manualWithoutCharge];
+
+    entriesFiltered.sort((a, b) => {
+      const da = dateSortable(a.date);
+      const db = dateSortable(b.date);
+      if (da && db && da !== db) {
+        return da.localeCompare(db);
+      }
+      if (da && !db) return -1;
+      if (!da && db) return 1;
+      return a.charge.localeCompare(b.charge, "de");
+    });
+
+    manualEntries.sort((a, b) => {
+      const da = dateSortable(a.date);
+      const db = dateSortable(b.date);
+      if (da && db && da !== db) {
+        return da.localeCompare(db);
+      }
+      if (da && !db) return -1;
+      if (!da && db) return 1;
+      return String(a.charge || "").localeCompare(String(b.charge || ""), "de");
+    });
+
+    const rebuildManual = () => {
+      manualByCharge.clear();
+      manualWithoutCharge.length = 0;
+      manualRows.forEach((row) => {
+        const chargeRaw = String(row?.charge || "").trim();
+        const key = normalizeChargeKey(chargeRaw);
+        if (!key) {
+          manualWithoutCharge.push(row);
+          return;
+        }
+        if (!manualByCharge.has(key)) {
+          manualByCharge.set(key, row);
+        }
+      });
+      manualEntries.length = 0;
+      manualEntries.push(...manualByCharge.values(), ...manualWithoutCharge);
+    };
+
+    const renderRows = (filterValue) => {
+      const q = String(filterValue || "").trim().toLowerCase();
+      const sourceRows = [...manualEntries, ...entriesFiltered];
+      const filtered = q
+        ? sourceRows.filter((entry) => {
+            const combined = `${entry.charge} ${entry.material} ${entry.date}`.toLowerCase();
+            return combined.includes(q);
+          })
+        : sourceRows;
+
+      tableBody.innerHTML = "";
+      if (filtered.length === 0) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = "<td class=\"weing-data-note\" colspan=\"3\">Keine Chargen vorhanden</td>";
+        tableBody.appendChild(tr);
+        return;
+      }
+      filtered.forEach((entry) => {
+        const tr = document.createElement("tr");
+        const isManual = entry && entry._manual === true;
+        tr.dataset.source = isManual ? "manual" : "auto";
+        tr.dataset.id = String(entry?.id || "");
+        if (isManual) {
+          tr.innerHTML = `<td contenteditable="true">${entry.charge || ""}</td><td contenteditable="true">${entry.material || ""}</td><td contenteditable="true">${entry.date || ""}</td>`;
+        } else {
+          tr.innerHTML = `<td>${entry.charge}</td><td>${entry.material}</td><td>${entry.date}</td>`;
+        }
+        tr.addEventListener("click", () => {
+          Array.from(tableBody.querySelectorAll("tr")).forEach((row) => row.classList.remove("row-selected"));
+          tr.classList.add("row-selected");
+        });
+        if (isManual) {
+          tr.querySelectorAll("td[contenteditable='true']").forEach(() => {
+            tr.addEventListener("input", () => {
+              const id = tr.dataset.id;
+              const updated = manualRows.map((row) => {
+                if (String(row.id) !== String(id)) {
+                  return row;
+                }
+                const [c1, c2, c3] = tr.querySelectorAll("td");
+                return {
+                  ...row,
+                  charge: c1?.textContent?.trim() || "",
+                  material: c2?.textContent?.trim() || "",
+                  date: c3?.textContent?.trim() || ""
+                };
+              });
+              saveManual(updated);
+            });
+          });
+        }
+        tableBody.appendChild(tr);
+      });
+    };
+
+    renderRows("");
+
+    if (searchInput) {
+      searchInput.addEventListener("input", () => {
+        renderRows(searchInput.value);
+      });
+    }
+
+    if (addBtn) {
+      addBtn.addEventListener("click", () => {
+        const id = `m-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        const newRow = { id, charge: "", material: "", date: "", _manual: true };
+        manualRows.push(newRow);
+        saveManual(manualRows);
+        rebuildManual();
+        renderRows(searchInput ? searchInput.value : "");
+        const rowEl = tableBody.querySelector(`tr[data-id="${id}"]`);
+        if (rowEl) {
+          Array.from(tableBody.querySelectorAll("tr")).forEach((row) => row.classList.remove("row-selected"));
+          rowEl.classList.add("row-selected");
+          const firstCell = rowEl.querySelector("td[contenteditable='true']");
+          if (firstCell) {
+            firstCell.focus();
+          }
+        }
+      });
+    }
+
+    if (removeBtn) {
+      removeBtn.addEventListener("click", () => {
+        const selected = tableBody.querySelector("tr.row-selected");
+        if (!selected) {
+          return;
+        }
+        if (selected.dataset.source !== "manual") {
+          alert("Nur manuell hinzugefügte Chargen können entfernt werden.");
+          return;
+        }
+        const id = selected.dataset.id;
+        const filtered = manualRows.filter((row) => String(row.id) !== String(id));
+        manualRows.length = 0;
+        manualRows.push(...filtered);
+        saveManual(manualRows);
+        rebuildManual();
+        renderRows(searchInput ? searchInput.value : "");
+      });
+    }
+
+    if (backBtn) {
+      backBtn.addEventListener("click", () => {
+        window.location.href = "index.html";
+      });
+    }
+  };
+
+  initChargenDataPage();
 });
 
 function printWvorbe() {
