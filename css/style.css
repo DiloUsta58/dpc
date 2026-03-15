@@ -8,12 +8,12 @@
   --border: #3a3a3a;
   --card-bg: #1a202a;
   --table-head: #313131;
-  --row-hover: #262f3d;
+  --row-hover: #95a80a;
   --shadow-soft: 0 10px 26px rgba(0, 0, 0, 0.38);
   --text: #f3f6fb;
   --text-muted: #d6dbe6;
-  --page-bg: #12161d;
-  --header-bg: #1a202a;
+  --page-bg: #677d0b;
+  --header-bg: #295b2b;
   --font: "Cambria", "Georgia", "Times New Roman", serif;
   --page-width: 190mm;
   --page-margin: 10mm;
@@ -289,6 +289,18 @@ html, body {
   gap: 6px;
 }
 
+.index-page .weing-info-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+  margin-bottom: 8px;
+}
+
+.index-page .weing-info-row #weingInfo {
+  position: static;
+  transform: none;
+}
+
 .index-page #weingInfo[hidden] {
   display: none !important;
 }
@@ -319,7 +331,7 @@ html, body {
 }
 
 #menuBtn:hover {
-  background: #253145;
+  background: #69610e;
 }
 
 #menuBtn img {
@@ -399,7 +411,7 @@ html, body {
 
 .menu-dropdown a:hover,
 .menu-dropdown button:hover {
-  background: #253145;
+  background: #69610e;
 }
 
 .actions-secondary {
@@ -1344,7 +1356,7 @@ tbody tr.row-nv-done .max-suffix {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 6px;
+  gap: 8px;
   margin: 6px 0 12px;
 }
 
@@ -1354,6 +1366,12 @@ tbody tr.row-nv-done .max-suffix {
   width: 100%;
   position: relative;
   min-height: 34px;
+}
+
+.weing-data-page .weing-data-search-row {
+  width: 100%;
+  display: flex;
+  justify-content: center;
 }
 
 .weing-data-page .weing-data-kw {
@@ -1443,9 +1461,8 @@ tbody tr.row-nv-done .max-suffix {
 }
 
 .weing-data-page .weing-data-search {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
+  position: static;
+  transform: none;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -1465,7 +1482,7 @@ tbody tr.row-nv-done .max-suffix {
   padding: 4px 6px;
   font-size: var(--fs-btn);
   min-width: 220px;
-  text-align: center;
+
 }
 
 .weing-data-page .weing-data-search input:focus {
