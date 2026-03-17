@@ -381,20 +381,25 @@ document.addEventListener("DOMContentLoaded", () => {
     const bereitstInput = row.querySelector("td:nth-child(3) input[type='text']");
     const remarkInput = row.querySelector(".bemerk-cell input[type='text']");
 
-    const normalizeBemerk = (value) => {
-      const raw = String(value || "").trim().toLowerCase();
+    const getRemarkType = (value) => {
+      const raw = String(value || "").trim();
       if (raw === "") {
         return "";
       }
-      const compact = raw.replace(/\s+/g, "");
-      if (compact === "nv" || compact === "n.v." || compact === "n.v") {
-        return "n.v.";
+      const normalized = raw.toLowerCase().replace(/\s+/g, "").replace(/[.!]/g, "");
+      if (normalized === "nv" || normalized === "n.v." || normalized === "n.v") {
+        return "nv";
       }
-      return "";
+      if (normalized === "freigabeerforderlich" || normalized.startsWith("frei")) {
+        return "freigabe";
+      }
+      return "other";
     };
 
     const sync = () => {
-      const remarkIsNv = remarkInput && String(remarkInput.value || "").trim().toLowerCase() === "n.v.";
+      const remarkType = getRemarkType(remarkInput?.value || "");
+      const remarkIsNv = remarkType === "nv";
+      const remarkNeedsRelease = remarkType === "freigabe";
       if (check) {
         if (remarkIsNv && check.checked) {
           check.checked = false;
@@ -404,6 +409,7 @@ document.addEventListener("DOMContentLoaded", () => {
         row.classList.toggle("row-nv-done", check.checked && remarkIsNv);
       }
       row.classList.toggle("row-not-available", remarkIsNv);
+      row.classList.toggle("row-release-required", remarkNeedsRelease);
       updateTableDoneState(row.closest("table.tight"));
       saveAutoWvorbeRows();
     };
@@ -413,15 +419,16 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     if (remarkInput) {
       remarkInput.addEventListener("input", () => {
-        row.classList.toggle("row-not-available", String(remarkInput.value || "").trim().toLowerCase() === "n.v.");
+        if (/^\s*frei/i.test(String(remarkInput.value || ""))) {
+          remarkInput.value = "Freigabe erforderlich!";
+        }
+        const remarkType = getRemarkType(remarkInput.value || "");
+        row.classList.toggle("row-not-available", remarkType === "nv");
+        row.classList.toggle("row-release-required", remarkType === "freigabe");
         updateTableDoneState(row.closest("table.tight"));
       });
-      const validate = () => {
-        remarkInput.value = normalizeBemerk(remarkInput.value);
-        sync();
-      };
-      remarkInput.addEventListener("change", validate);
-      remarkInput.addEventListener("blur", validate);
+      remarkInput.addEventListener("change", sync);
+      remarkInput.addEventListener("blur", sync);
     }
     [materialInput, mengeInput, bereitstInput].forEach((input) => {
       if (!input) {
@@ -579,17 +586,39 @@ document.addEventListener("DOMContentLoaded", () => {
     const bemerkInput = cells[4].querySelector("input[type='text']");
     const statusCheckInRow = row.querySelector(".status-check");
     if (bemerkInput) {
-      const normalizeBemerkValue = (value) => {
-        const raw = String(value || "").trim().toLowerCase();
+      const detectRemarkType = (value) => {
+        const raw = String(value || "").trim();
         if (raw === "") {
           return "";
         }
+        const normalized = raw.toLowerCase().replace(/\s+/g, "").replace(/[.!]/g, "");
+        if (normalized === "nv" || normalized === "n.v." || normalized === "n.v") {
+          return "nv";
+        }
+        if (normalized === "freigabeerforderlich" || normalized.startsWith("frei")) {
+          return "freigabe";
+        }
+        return "other";
+      };
 
-        const compact = raw.replace(/\s+/g, "");
-        if (compact === "nv" || compact === "n.v." || compact === "n.v") {
+      const normalizeBemerkValue = (value) => {
+        const raw = String(value || "").trim();
+        if (raw === "") {
+          return "";
+        }
+        if (/^\s*frei/i.test(raw)) {
+          return "Freigabe erforderlich!";
+        }
+        if (isSonder) {
+          return raw;
+        }
+        const remarkType = detectRemarkType(raw);
+        if (remarkType === "nv") {
           return "n.v.";
         }
-
+        if (remarkType === "freigabe") {
+          return "Freigabe erforderlich!";
+        }
         return "";
       };
 
@@ -597,7 +626,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!statusCheckInRow) {
           return;
         }
-        const isNotAvailable = normalizedValue === "n.v.";
+        const isNotAvailable = detectRemarkType(normalizedValue) === "nv";
         if (isNotAvailable && statusCheckInRow.checked) {
           statusCheckInRow.checked = false;
           statusCheckInRow.dispatchEvent(new Event("change", { bubbles: true }));
@@ -606,9 +635,15 @@ document.addEventListener("DOMContentLoaded", () => {
       };
 
       const syncBemerkState = () => {
-        const value = String(bemerkInput.value || "").trim().toLowerCase();
-        const isNotAvailable = value === "n.v.";
+        if (/^\s*frei/i.test(String(bemerkInput.value || ""))) {
+          bemerkInput.value = "Freigabe erforderlich!";
+        }
+        const value = String(bemerkInput.value || "").trim();
+        const remarkType = detectRemarkType(value);
+        const isNotAvailable = remarkType === "nv";
+        const isFreigabe = remarkType === "freigabe";
         row.classList.toggle("row-not-available", isNotAvailable);
+        row.classList.toggle("row-release-required", isFreigabe);
         row.classList.toggle("row-nv-done", isNotAvailable);
         syncRemarkLockState(isNotAvailable ? "n.v." : "");
         if (isNotAvailable) {
@@ -620,10 +655,12 @@ document.addEventListener("DOMContentLoaded", () => {
       const validateBemerkValue = () => {
         const normalized = normalizeBemerkValue(bemerkInput.value);
         bemerkInput.value = normalized;
-        row.classList.toggle("row-not-available", normalized === "n.v.");
-        row.classList.toggle("row-nv-done", normalized === "n.v.");
+        const remarkType = detectRemarkType(normalized);
+        row.classList.toggle("row-not-available", remarkType === "nv");
+        row.classList.toggle("row-release-required", remarkType === "freigabe");
+        row.classList.toggle("row-nv-done", remarkType === "nv");
         syncRemarkLockState(normalized);
-        if (normalized === "n.v.") {
+        if (remarkType === "nv") {
           propagateNvToSamePosition(rowLabel, bemerkInput);
         }
         saveAutoWvorbeRows();

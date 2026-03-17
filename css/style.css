@@ -948,6 +948,22 @@ tbody tr.row-not-available .max-suffix {
   color: #fff;
 }
 
+tbody tr.row-release-required,
+tbody tr.row-release-required:hover {
+  background: #bcad29;
+}
+
+tbody tr.row-release-required td {
+  background: #bcad29;
+  color: #111;
+}
+
+tbody tr.row-release-required .editable-cell input,
+tbody tr.row-release-required .bemerk-cell input,
+tbody tr.row-release-required .max-suffix {
+  color: #111;
+}
+
 /* Vorrang: n.v. übersteuert Erledigt-Farbe */
 tbody tr.row-done.row-not-available,
 tbody tr.row-done.row-not-available:hover {
@@ -989,6 +1005,11 @@ tbody tr.row-nv-done .max-suffix {
 .index-color-font .tight tbody tr.row-done.row-not-available td {
   background: var(--tblN-L-bg);
   color: #fff;
+}
+
+.index-color-font .tight tbody tr.row-release-required td {
+  background: #bcad29;
+  color: #111;
 }
 
 .tight.table-done {
