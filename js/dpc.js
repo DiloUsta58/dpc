@@ -126,7 +126,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const todayDate = new Date();
   const todayIso = toIsoLocal(todayDate);
-  const appVersion = "1.0.36";
+  const appVersion = "1.0.37";
   const appVersionFile = "app-version.json";
   const selectedDateStateKey = "dpc:selectedDate";
   const uiSettingsKey = "dpc:settings";
@@ -1885,13 +1885,137 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       return normalized;
     };
+    const parsePalletCount = (value) => {
+      const raw = String(value || "").trim();
+      if (!raw) {
+        return 0;
+      }
+      const rangeMatch = raw.match(/^\s*(\d+)\s*-\s*(\d+)\s*$/);
+      if (rangeMatch) {
+        const start = Number.parseInt(rangeMatch[1], 10);
+        const end = Number.parseInt(rangeMatch[2], 10);
+        if (Number.isFinite(start) && Number.isFinite(end) && end >= start) {
+          return (end - start) + 1;
+        }
+        return 0;
+      }
+      const singleMatch = raw.match(/^\s*(\d+)\s*$/);
+      if (singleMatch) {
+        const count = Number.parseInt(singleMatch[1], 10);
+        return Number.isFinite(count) ? Math.max(0, count) : 0;
+      }
+      return 0;
+    };
 
     const isInMaterialSet = (normalized, set) => {
       const key = normalizeToKey(normalized);
       return set.has(key);
     };
+    const normalizeChargeToken = (value) => String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, "");
+    const hasPalletNoOne = (value) => {
+      const numbers = String(value || "").match(/\d+/g) || [];
+      return numbers.some((part) => Number.parseInt(part, 10) === 1);
+    };
+    const parseDeDateToIso = (value) => {
+      const match = String(value || "").trim().match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+      if (!match) {
+        return "";
+      }
+      const [, dd, mm, yyyy] = match;
+      return `${yyyy}-${mm}-${dd}`;
+    };
+    let knownChargesCacheIso = "";
+    let knownChargesCache = new Set();
+
+    const extractChargeFromRowValues = (rowValues) => {
+      if (!Array.isArray(rowValues)) {
+        return "";
+      }
+      if (rowValues.length >= 8) {
+        return String(rowValues[5] || "");
+      }
+      if (rowValues.length >= 3) {
+        return String(rowValues[2] || "");
+      }
+      return "";
+    };
+
+    const buildKnownChargesSet = () => {
+      const known = new Set();
+      for (let i = 0; i < localStorage.length; i += 1) {
+        const key = localStorage.key(i);
+        if (!key || !key.startsWith("dpc:weing:")) {
+          continue;
+        }
+        const raw = localStorage.getItem(key);
+        if (!raw) {
+          continue;
+        }
+        try {
+          const payload = JSON.parse(raw);
+          const keyIso = key.replace("dpc:weing:", "");
+          const payloadIso = parseDeDateToIso(payload?.date || "");
+          const rowIso = keyIso || payloadIso;
+          if (!rowIso || rowIso >= selectedIso) {
+            continue;
+          }
+          const rows = Array.isArray(payload?.rows) ? payload.rows : [];
+          rows.forEach((rowValues) => {
+            const charge = normalizeChargeToken(extractChargeFromRowValues(rowValues));
+            if (charge) {
+              known.add(charge);
+            }
+          });
+        } catch (error) {
+          // ignore malformed keys
+        }
+      }
+
+      try {
+        const rawManual = localStorage.getItem("dpc:chargen:manual");
+        if (rawManual) {
+          const manualRows = JSON.parse(rawManual);
+          if (Array.isArray(manualRows)) {
+            manualRows.forEach((row) => {
+              const charge = normalizeChargeToken(row?.charge || "");
+              const iso = parseDeDateToIso(row?.date || "");
+              if (!charge) {
+                return;
+              }
+              if (iso && iso >= selectedIso) {
+                return;
+              }
+              known.add(charge);
+            });
+          }
+        }
+      } catch (error) {
+        // ignore malformed manual rows
+      }
+
+      return known;
+    };
+
+    const getKnownChargesSet = () => {
+      if (knownChargesCacheIso !== selectedIso) {
+        knownChargesCache = buildKnownChargesSet();
+        knownChargesCacheIso = selectedIso;
+      }
+      return knownChargesCache;
+    };
 
     const isDataRow = (row) => !!row && row.tagName === "TR" && !row.classList.contains("add-row-line");
+    const refreshAllProbeRows = () => {
+      if (config.storagePrefix !== "weing" || columnDefs.length !== 8) {
+        return;
+      }
+      knownChargesCacheIso = "";
+      const rows = table.querySelectorAll("tbody tr:not(.add-row-line)");
+      rows.forEach((row) => updateProbeRowState(row));
+    };
 
     const getCellTextValue = (cell) => {
       if (!cell) {
@@ -1984,7 +2108,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         selectRow(row);
       });
-      updateProbeRowState(row);
+      refreshAllProbeRows();
     };
 
     const updateProbeRowState = (row) => {
@@ -1993,17 +2117,58 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       const materialCell = row.querySelector("td:nth-child(5)");
       const chargeCell = row.querySelector("td:nth-child(6)");
+      const palletCell = row.querySelector("td:nth-child(7)");
+      const amountCell = row.querySelector("td:nth-child(8)");
       const materialValue = String(materialCell?.textContent || "").trim();
       const chargeValue = String(chargeCell?.textContent || "").trim();
+      const palletValue = String(palletCell?.textContent || "").trim();
+      const chargeToken = normalizeChargeToken(chargeValue);
       const normalizedMaterial = normalizeProbeMaterial(materialValue);
+      const materialKey = normalizeToKey(normalizedMaterial);
       const isPastDay = selectedIso < todayIso && !canEditPastDays();
       const checks = row.querySelectorAll("td input.probe-check");
+      const knownCharges = getKnownChargesSet();
+      const rows = Array.from(table.querySelectorAll("tbody tr:not(.add-row-line)"));
+      const isKnownCharge = chargeToken !== "" && knownCharges.has(chargeToken);
+
+      const sameChargeRows = chargeToken === ""
+        ? []
+        : rows.filter((tableRow) => {
+            const tableChargeCell = tableRow.querySelector("td:nth-child(6)");
+            const tableToken = normalizeChargeToken(tableChargeCell?.textContent || "");
+            return tableToken !== "" && tableToken === chargeToken;
+          });
+
+      const groupPal1MischChecked = sameChargeRows.some((tableRow) => {
+        const tableMaterialCell = tableRow.querySelector("td:nth-child(5)");
+        const tablePalletCell = tableRow.querySelector("td:nth-child(7)");
+        const tableMaterial = String(tableMaterialCell?.textContent || "").trim();
+        const tableNormalizedMaterial = normalizeProbeMaterial(tableMaterial);
+        if (!tableMaterial || !isInMaterialSet(tableNormalizedMaterial, laborMischprobeMaterials)) {
+          return false;
+        }
+        if (!hasPalletNoOne(String(tablePalletCell?.textContent || "").trim())) {
+          return false;
+        }
+        const probeChecks = tableRow.querySelectorAll("td input.probe-check");
+        const mischCheck = probeChecks[2];
+        return Boolean(mischCheck && mischCheck.checked);
+      });
 
       const laborRequired = materialValue !== "" && isInMaterialSet(normalizedMaterial, laborProbeMaterials);
       const keRequired = materialValue !== "" && isInMaterialSet(normalizedMaterial, keProbeMaterials);
+      const isLudox = materialValue !== "" && materialKey === "LUDOX";
+      if (amountCell && isLudox) {
+        const palletCount = parsePalletCount(palletValue);
+        amountCell.dataset.autoLudox = "1";
+        amountCell.textContent = palletCount > 0 ? `${palletCount * 255} Kg` : "";
+      } else if (amountCell && amountCell.dataset.autoLudox === "1") {
+        amountCell.textContent = "";
+        delete amountCell.dataset.autoLudox;
+      }
       const mischRequired = materialValue !== ""
         && isInMaterialSet(normalizedMaterial, laborMischprobeMaterials)
-        && /n/i.test(chargeValue);
+        && (isLudox || (chargeToken !== "" && (!isKnownCharge || groupPal1MischChecked)));
 
       const requirements = [laborRequired, keRequired, mischRequired];
       const anyRequired = requirements.some(Boolean);
@@ -2016,6 +2181,16 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         check.style.visibility = required ? "visible" : "hidden";
       });
+
+      if (chargeCell) {
+        chargeCell.classList.toggle("charge-known", chargeToken !== "" && isKnownCharge);
+        chargeCell.classList.toggle("charge-new", chargeToken !== "" && !isKnownCharge);
+        if (chargeToken === "") {
+          chargeCell.removeAttribute("title");
+        } else {
+          chargeCell.title = isKnownCharge ? "Charge bereits vorhanden" : "Neue Charge";
+        }
+      }
 
       row.classList.toggle("probe-not-required", !anyRequired);
       if (!anyRequired) {
@@ -2090,8 +2265,8 @@ document.addEventListener("DOMContentLoaded", () => {
           cell.contentEditable = isPastDay ? "false" : "true";
           cell.classList.toggle("locked-field", isPastDay);
         });
-        updateProbeRowState(row);
       });
+      refreshAllProbeRows();
 
       if (addRowBtn) {
         addRowBtn.disabled = isPastDay;
@@ -2139,6 +2314,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const firstRow = table.querySelector("tbody tr:not(.add-row-line)");
       selectRow(firstRow || null);
       setReadonlyLocal();
+      refreshAllProbeRows();
     };
 
     const getRows = (excludeAutoGenerated) => {
@@ -2483,7 +2659,7 @@ document.addEventListener("DOMContentLoaded", () => {
           delete row.dataset.autoGenerated;
         }
         if (row) {
-          updateProbeRowState(row);
+          refreshAllProbeRows();
         }
         setDirty(true);
       }
@@ -2501,7 +2677,7 @@ document.addEventListener("DOMContentLoaded", () => {
         delete row.dataset.autoGenerated;
       }
       if (row) {
-        updateProbeRowState(row);
+        refreshAllProbeRows();
       }
       setDirty(true);
     });
@@ -2949,32 +3125,28 @@ document.addEventListener("DOMContentLoaded", () => {
       const iso = parseDeToIso(value);
       return iso || "";
     };
+    const sortByMaterial = (a, b) => {
+      const ma = String(a?.material || "").trim().toLowerCase();
+      const mb = String(b?.material || "").trim().toLowerCase();
+      if (ma !== mb) {
+        return ma.localeCompare(mb, "de");
+      }
+      const da = dateSortable(a?.date || "");
+      const db = dateSortable(b?.date || "");
+      if (da && db && da !== db) {
+        return da.localeCompare(db);
+      }
+      if (da && !db) return -1;
+      if (!da && db) return 1;
+      return String(a?.charge || "").localeCompare(String(b?.charge || ""), "de");
+    };
 
     const entriesFiltered = entries
       .filter((entry) => !manualByCharge.has(normalizeChargeKey(entry.charge)));
     const manualEntries = [...manualByCharge.values(), ...manualWithoutCharge];
 
-    entriesFiltered.sort((a, b) => {
-      const da = dateSortable(a.date);
-      const db = dateSortable(b.date);
-      if (da && db && da !== db) {
-        return da.localeCompare(db);
-      }
-      if (da && !db) return -1;
-      if (!da && db) return 1;
-      return a.charge.localeCompare(b.charge, "de");
-    });
-
-    manualEntries.sort((a, b) => {
-      const da = dateSortable(a.date);
-      const db = dateSortable(b.date);
-      if (da && db && da !== db) {
-        return da.localeCompare(db);
-      }
-      if (da && !db) return -1;
-      if (!da && db) return 1;
-      return String(a.charge || "").localeCompare(String(b.charge || ""), "de");
-    });
+    entriesFiltered.sort(sortByMaterial);
+    manualEntries.sort(sortByMaterial);
 
     const rebuildManual = () => {
       manualByCharge.clear();
@@ -2996,7 +3168,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const renderRows = (filterValue) => {
       const q = String(filterValue || "").trim().toLowerCase();
-      const sourceRows = [...manualEntries, ...entriesFiltered];
+      const sourceRows = [...manualEntries, ...entriesFiltered].sort(sortByMaterial);
       const filtered = q
         ? sourceRows.filter((entry) => {
             const combined = `${entry.charge} ${entry.material} ${entry.date}`.toLowerCase();
