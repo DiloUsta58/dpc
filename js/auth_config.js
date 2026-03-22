@@ -1,6 +1,9 @@
 window.AUTH_CONFIG = {
   sessionKey: "dpc:auth:ok",
   roleKey: "dpc:auth:role",
+  localUsersKey: "dpc:auth:users",
+  roleOverridesKey: "dpc:auth:roleOverrides",
+  disabledUsersKey: "dpc:auth:disabledUsers",
   redirectOnSuccess: "aufg.html",
   users: [
     {

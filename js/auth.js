@@ -2,6 +2,9 @@
   const cfg = window.AUTH_CONFIG || {};
   const sessionKey = cfg.sessionKey || "dpc:auth:ok";
   const roleKey = cfg.roleKey || "dpc:auth:role";
+  const localUsersKey = cfg.localUsersKey || "dpc:auth:users";
+  const roleOverridesKey = cfg.roleOverridesKey || "dpc:auth:roleOverrides";
+  const disabledUsersKey = cfg.disabledUsersKey || "dpc:auth:disabledUsers";
   const redirectOnSuccess = cfg.redirectOnSuccess || "aufg.html";
   const users = Array.isArray(cfg.users) ? cfg.users : [];
 
@@ -16,6 +19,45 @@
   };
 
   const normalizeHash = (value) => String(value || "").trim().toLowerCase();
+  const loadLocalUsers = () => {
+    try {
+      const raw = localStorage.getItem(localUsersKey);
+      if (!raw) {
+        return [];
+      }
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) {
+        return [];
+      }
+      return parsed.filter((entry) => entry && typeof entry === "object");
+    } catch (error) {
+      return [];
+    }
+  };
+  const loadRoleOverrides = () => {
+    try {
+      const raw = localStorage.getItem(roleOverridesKey);
+      if (!raw) {
+        return {};
+      }
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch (error) {
+      return {};
+    }
+  };
+  const loadDisabledUsers = () => {
+    try {
+      const raw = localStorage.getItem(disabledUsersKey);
+      if (!raw) {
+        return [];
+      }
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      return [];
+    }
+  };
 
   const isAuthenticated = () => sessionStorage.getItem(sessionKey) === "1";
   const setAuthenticated = (role) => {
@@ -56,7 +98,21 @@
     try {
       const userHash = normalizeHash(await sha256(usernameRaw));
       const passHash = normalizeHash(await sha256(passwordRaw));
-      const matchedUser = users.find((entry) =>
+      const roleOverrides = loadRoleOverrides();
+      const disabledUsers = new Set(loadDisabledUsers().map((hash) => normalizeHash(hash)));
+      const runtimeUsers = [...users, ...loadLocalUsers()]
+        .map((entry) => {
+          const hash = normalizeHash(entry.usernameHash);
+          const overrideRole = roleOverrides[hash];
+          return {
+            ...entry,
+            role: overrideRole === "Admin" || overrideRole === "User"
+              ? overrideRole
+              : (entry.role || "User")
+          };
+        })
+        .filter((entry) => !disabledUsers.has(normalizeHash(entry.usernameHash)));
+      const matchedUser = runtimeUsers.find((entry) =>
         normalizeHash(entry.usernameHash) === userHash
         && normalizeHash(entry.passwordHash) === passHash
       );

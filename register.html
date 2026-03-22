@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Register</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="icon" href="icons/favicon.ico">
+  <style>
+    .register-page .page-wrap {
+      min-height: 100vh;
+      align-items: center;
+    }
+    .register-card {
+      width: min(560px, calc(100vw - 24px));
+      padding: 18px;
+      border: 1px solid #3a3a3a;
+      border-radius: 14px;
+      background: #2b2b2b;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+    }
+    .register-title {
+      margin: 0 0 14px;
+      text-align: center;
+      font-size: 22px;
+      font-weight: 700;
+      color: #f5f5f5;
+    }
+    .register-form {
+      display: grid;
+      gap: 10px;
+    }
+    .register-form label {
+      font-size: 14px;
+      color: #d6dbe6;
+    }
+    .register-form input,
+    .register-form select {
+      width: 100%;
+      border: 1px solid #3a3a3a;
+      border-radius: 8px;
+      padding: 8px 10px;
+      background: #313131;
+      color: #f5f5f5;
+      font-size: 14px;
+      font-family: inherit;
+    }
+    .register-actions {
+      margin-top: 8px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .register-actions button,
+    .register-actions a {
+      border: 1px solid #3a3a3a;
+      background: #313131;
+      color: #f5f5f5;
+      border-radius: 8px;
+      padding: 7px 14px;
+      font-size: 14px;
+      font-weight: 700;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .register-actions button:hover,
+    .register-actions a:hover {
+      background: #3a3a3a;
+    }
+    .register-msg {
+      min-height: 20px;
+      font-size: 13px;
+      color: #ffb0b0;
+    }
+    .register-msg.ok {
+      color: #9fe0b0;
+    }
+  </style>
+</head>
+<body class="index-page index-color-font register-page">
+  <div class="page-wrap">
+    <div class="register-card">
+      <h1 class="register-title">Neuen Benutzer anlegen</h1>
+      <form id="registerForm" class="register-form" autocomplete="off">
+        <div>
+          <label for="regUser">Benutzername</label>
+          <input id="regUser" type="text" required />
+        </div>
+        <div>
+          <label for="regPass">Passwort</label>
+          <input id="regPass" type="password" required />
+        </div>
+        <div>
+          <label for="regPass2">Passwort wiederholen</label>
+          <input id="regPass2" type="password" required />
+        </div>
+        <div>
+          <label for="regRole">Rolle</label>
+          <select id="regRole">
+            <option value="User">User</option>
+            <option value="Admin">Admin</option>
+          </select>
+        </div>
+        <div class="register-actions">
+          <button type="submit">Benutzer speichern</button>
+          <a href="aufg.html">Zurück zur Startseite</a>
+          <span id="registerMsg" class="register-msg" aria-live="polite"></span>
+        </div>
+      </form>
+    </div>
+  </div>
+  <script src="js/auth_config.js"></script>
+  <script src="js/register.js"></script>
+</body>
+</html>

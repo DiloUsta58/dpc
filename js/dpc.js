@@ -1116,6 +1116,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const saveStatus = document.getElementById("saveStatus");
   const menuBtn = document.getElementById("menuBtn");
   const menuDropdown = document.getElementById("menuDropdown");
+  const menuUsersAdminLink = document.getElementById("menuUsersAdminLink");
+  const menuRegisterLink = document.getElementById("menuRegisterLink");
   const menuWeingPreviewLink = document.getElementById("menuWeingPreviewLink");
   const menuChargenDataLink = document.getElementById("menuChargenDataLink");
   const exportLocalFileBtn = document.getElementById("exportLocalFileBtn");
@@ -1144,6 +1146,8 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   if (isUserRole) {
+    disableMenuItemLink(menuUsersAdminLink);
+    disableMenuItemLink(menuRegisterLink);
     disableMenuItemLink(menuWeingPreviewLink);
     disableMenuItemLink(menuChargenDataLink);
   }

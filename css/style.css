@@ -404,11 +404,14 @@ html, body {
 
 .menu-item-list::before { content: "▦"; }
 .menu-item-in::before { content: "↘"; }
+.menu-item-preview::before { content: "🗂"; }
 .menu-item-settings::before { content: "⚙"; }
 .menu-item-save::before { content: "⬇"; }
 .menu-item-load::before { content: "⤒"; }
 .menu-item-chargen::before { content: "🧾"; }
 .menu-item-logout::before { content: "⇦"; }
+.menu-item-users-admin::before { content: "👤"; }
+.menu-item-register::before { content: "✚"; }
 
 .menu-dropdown a:hover,
 .menu-dropdown button:hover {
