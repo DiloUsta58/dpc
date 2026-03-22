@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bestandsüberprüfung</title>
+  <link rel="stylesheet" href="css/style.css" />
+
+
+<!-- =========================
+     ICONS
+========================= -->
+
+<link rel="icon" href="icons/favicon.ico">
+<link rel="icon" type="image/png" sizes="64x64" href="icons/favicon-64.png">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+
+<link rel="apple-touch-icon" sizes="180x180" href="icons/favicon-180.png">
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1f4fd8">
+
+
+
+
+</head>
+<body class="index-page index-color-font">
+  <div class="page-wrap">
+  <div class="page">
+    <div class="date-line"><span>Datum:</span><span class="line current-date"></span></div>
+    <div class="top-actions">
+      <div class="top-actions-row">
+        <div class="menu-wrapper">
+          <button id="menuBtn" type="button" aria-label="Menü öffnen" aria-expanded="false">
+            <img src="img/menue.png" alt="Menü" />
+          </button>
+          <div id="menuDropdown" class="menu-dropdown" aria-hidden="true">
+            <a href="settings.html" class="menu-item menu-item-settings">Einstellungen</a>
+            <div class="menu-separator" role="separator" aria-hidden="true"></div>
+            <a href="wvorbe.html" class="menu-item menu-item-list">Bereitstellung Liste</a>
+            <a href="weing.html" class="menu-item menu-item-in">Wahreneingang</a>
+            <a id="menuWeingPreviewLink" href="weingData.html" class="menu-item menu-item-preview">Wahreneingang Vorschau</a>
+            <a id="menuChargenDataLink" href="chargen_daten.html" class="menu-item menu-item-chargen">Chargen-Daten</a>
+            <div class="menu-separator" role="separator" aria-hidden="true"></div>
+            <button id="exportLocalFileBtn" class="menu-item menu-item-save" type="button">Lokale Datei Speichern</button>
+            <button id="importLocalFileBtn" class="menu-item menu-item-load" type="button">Lokale Datei Laden</button>
+            <div class="menu-separator" role="separator" aria-hidden="true"></div>
+            <button id="logoutBtn" class="menu-item menu-item-logout" type="button">Logout</button>
+            <input id="importFileInput" type="file" accept=".json,application/json" hidden />
+          </div>
+        </div>
+        <label for="yearValue">Jahr:</label>
+        <div class="year-switch">
+          <button id="yearDownBtn" type="button" aria-label="Jahr runter">-</button>
+          <span id="yearValue">2026</span>
+          <button id="yearUpBtn" type="button" aria-label="Jahr hoch">+</button>
+        </div>
+        <label for="kwSelect">KW:</label>
+        <select id="kwSelect"></select>
+        <label for="daySelect">Tag:</label>
+        <select id="daySelect"></select>
+      </div>
+      <div class="top-actions-row actions-secondary">
+        <button id="saveBtn" type="button">Speichern</button>
+        <button id="loadBtn" type="button">Load</button>
+        <span id="saveStatus" aria-live="polite"></span>
+      </div>
+    </div>
+    <h1 class="index-title">Bestandsüberprüfung und Bereitstellung<br/>von Rohstoffen und Schleifbänder nach Abteilungen</h1>
+    <div class="weing-info-row">
+      <span id="weingInfo" class="weing-info" hidden><img src="img/we.png" alt="" aria-hidden="true" />Wareneingang vorhanden.</span>
+    </div>
+
+    <div class="grid">
+      <div>
+        <table class="tight tbl-ke">
+          <thead>
+            <tr>
+              <th class="section"><input class="status-checkKE" type="checkbox" /><span class="dept-ke">Abt.: KE</span></th>
+              <th>Ist/Soll</th>
+              <th>Bereitst.</th>
+              <th>Erld.</th><th>Bemerk.</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>0,5 - 1</td><td class="editable-cell"><input type="text" value="/2" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td>14/28</td><td class="editable-cell"><input type="text" value="/2" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td>0,25 - 0,50</td><td class="editable-cell"><input type="text" value="/1" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td>0,1 - 0,15</td><td class="editable-cell"><input type="text" value="/1" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td>Rhoseal</td><td class="editable-cell"><input type="text" value="/10" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td>Rhoseal HT</td><td class="editable-cell"><input type="text" value="/10" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+          </tbody>
+        </table>
+
+        <table class="tight tbl-fm-regal2" style="margin-top: 6mm;">
+          <thead>
+            <tr>
+              <th class="section"><input class="status-checkFM1" type="checkbox" /><span class="dept-fm">Abt.: FM- Regal 2</span></th><th>Ist/Soll</th><th>Bereitst.</th><th>Erld.</th><th>Bemerk.</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Pos. 1</td><td class="editable-cell"><input type="text" value="/6" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td>Pos. 2</td><td class="editable-cell"><input type="text" value="/6" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td>Pos. 3</td><td class="editable-cell"><input type="text" value="/5" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td>Pos. 4</td><td class="editable-cell"><input type="text" value="/5" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td>Pos. 6</td><td class="editable-cell"><input type="text" value="/5" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td>Pos. 8</td><td class="editable-cell"><input type="text" value="/5" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td>Pos. 9</td><td class="editable-cell"><input type="text" value="/5" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td>Pos. 10</td><td class="editable-cell"><input type="text" value="/5" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td>Pos. 17</td><td class="editable-cell"><input type="text" value="/5" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td>Pos. 18</td><td class="editable-cell"><input type="text" value="/5" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+          </tbody>
+        </table>
+
+        <table class="tight tbl-fm-left-extra" style="margin-top: 6mm;">
+          <thead>
+            <tr>
+              <th class="section"><input class="status-checkFM4" type="checkbox" /><span class="dept-fm">Abt.: FM- Regal 4</span></th><th>Ist/Soll</th><th>Bereitst.</th><th>Erld.</th><th>Bemerk.</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Pos. 11</td><td class="editable-cell"><input type="text" value="/2" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td>Pos. 12</td><td class="editable-cell"><input type="text" value="/2" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td>Pos. 13</td><td class="editable-cell"><input type="text" value="/2" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td>Pos. 16</td><td class="editable-cell"><input type="text" value="/4" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+          </tbody>
+        </table>
+
+        <table class="tight tbl-fm-strahlhaus" style="margin-top: 6mm;">
+          <thead>
+            <tr>
+              <th class="section"><input class="status-checkFMStrahlhaus" type="checkbox" /><span class="dept-fm">Abt.: FM-Strahlhaus</span></th><th>Ist/Soll</th><th>Bereitst.</th><th>Erld.</th><th>Bemerk.</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>NK60</td><td class="editable-cell"><input type="text" value="/1" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td>NK90</td><td class="editable-cell"><input type="text" value="/1" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+          </tbody>
+        </table>
+
+        <table class="tight tbl-wa" style="margin-top: 6mm;">
+          <thead>
+            <tr>
+              <th class="section"><input class="status-checkWA" type="checkbox" /><span class="dept-wa">Sonderbest. Material</span></th>
+              <th>Menge</th>
+              <th>Bereitst.</th>
+              <th>Erld.</th><th>Bemerk.</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td class="editable-cell"><input type="text" value="" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td class="editable-cell"><input type="text" value="" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td class="editable-cell"><input type="text" value="" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td class="editable-cell"><input type="text" value="" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td class="editable-cell"><input type="text" value="" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td class="editable-cell"><input type="text" value="" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td class="editable-cell"><input type="text" value="" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td class="editable-cell"><input type="text" value="" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr class="wa-row-controls add-row-line">
+              <td colspan="5">
+                <button id="addWaRowBtn" type="button" title="Zeile hinzufügen" aria-label="Zeile hinzufügen">+</button>
+                <button id="removeWaRowBtn" type="button" title="Unter &quot;5&quot; Zeilen nicht zugelassen!" aria-label="Zeile entfernen (Unter. 5 Zeilen nicht zugelassen!)">-</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div>
+        <table class="tight tbl-fm-regal1">
+          <thead>
+            <tr>
+              <th class="section"><input class="status-checkFM1" type="checkbox" /><span class="dept-fm">Abt.: FM-Regal 1</span></th><th>Ist/Soll</th><th>Bereitst.</th><th>Erld.</th><th>Bemerk.</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Pos. 1</td><td class="editable-cell"><input type="text" value="/6" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td>Pos. 2</td><td class="editable-cell"><input type="text" value="/6" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td>Pos. 3</td><td class="editable-cell"><input type="text" value="/5" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td>Pos. 4</td><td class="editable-cell"><input type="text" value="/5" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td>Pos. 5</td><td class="editable-cell"><input type="text" value="/3" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td>Pos. 6</td><td class="editable-cell"><input type="text" value="/6" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td>Pos. 7</td><td class="editable-cell"><input type="text" value="/6" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td>Pos. 8</td><td class="editable-cell"><input type="text" value="/6" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td>Pos. 9</td><td class="editable-cell"><input type="text" value="/6" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td>Pos. 10</td><td class="editable-cell"><input type="text" value="/6" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+          </tbody>
+        </table>
+
+        <table class="tight tbl-fm-regal3" style="margin-top: 6mm;">
+          <thead>
+              <tr>
+              <th class="section"><input class="status-checkFM3" type="checkbox" /><span class="dept-fm">Abt.: FM-Regal 3</span></th><th>Ist/Soll</th><th>Bereitst.</th><th>Erld.</th><th>Bemerk.</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Pos. 1</td><td class="editable-cell"><input type="text" value="/5" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td>Pos. 2</td><td class="editable-cell"><input type="text" value="/5" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td>Pos. 3</td><td class="editable-cell"><input type="text" value="/5" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td>Pos. 4</td><td class="editable-cell"><input type="text" value="/5" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td>Pos. 5</td><td class="editable-cell"><input type="text" value="/3" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td>Pos. 6</td><td class="editable-cell"><input type="text" value="/5" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td>Pos. 7</td><td class="editable-cell"><input type="text" value="/6" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+          </tbody>
+        </table>
+
+        <table class="tight tbl-fm-regal4" style="margin-top: 6mm;">
+          <thead>
+            <tr>
+              <th class="section"><input class="status-checkFM5" type="checkbox" /><span class="dept-fm">Abt.: FM-Regal 5</span></th><th>Ist/Soll</th><th>Bereitst.</th><th>Erld.</th><th>Bemerk.</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Pos. 14</td><td class="editable-cell"><input type="text" value="/5" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td>Pos. 15</td><td class="editable-cell"><input type="text" value="/5" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+            <tr><td>Pos. 23</td><td class="editable-cell"><input type="text" value="/2" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+          </tbody>
+        </table>
+
+        <table class="tight tbl-fm-powergr" style="margin-top: 6mm;">
+          <thead>
+            <tr>
+              <th class="section"><input class="status-checkFMpowergr" type="checkbox" /><span class="dept-fm">Abt.: FM-Powergr.</span></th><th>Ist/Soll</th><th>Bereitst.</th><th>Erld.</th><th>Bemerk.</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Pos. 25</td><td class="editable-cell"><input type="text" value="/10" /></td><td class="editable-cell"><input type="text" value="" /></td><td class="erld-cell"><input class="status-check" type="checkbox" /></td><td class="bemerk-cell"><input type="text" value="" /></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="notes">
+      <p class="notes-title">Notizen:</p>
+      <table class="notes-table">
+        <colgroup>
+          <col style="width: 50%;" />
+          <col style="width: 50%;" />
+        </colgroup>
+        <tbody>
+          <tr><td contenteditable="true"></td><td contenteditable="true"></td></tr>
+          <tr><td contenteditable="true"></td><td contenteditable="true"></td></tr>
+          <tr><td contenteditable="true"></td><td contenteditable="true"></td></tr>
+          <tr><td contenteditable="true"></td><td contenteditable="true"></td></tr>
+          <tr><td contenteditable="true"></td><td contenteditable="true"></td></tr>
+          <tr><td contenteditable="true"></td><td contenteditable="true"></td></tr>
+          <tr><td contenteditable="true"></td><td contenteditable="true"></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <footer>
+      <div id="kimlik">© Dilaver Bölükbaşı</div>
+      <div id="lastUpdate"></div>
+      <span id="footerVersion">Version: …</span>
+    </footer>
+  </div>
+  </div>
+  <script src="js/dpc.js" defer></script>
+</body>
+</html>

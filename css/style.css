@@ -408,10 +408,17 @@ html, body {
 .menu-item-save::before { content: "⬇"; }
 .menu-item-load::before { content: "⤒"; }
 .menu-item-chargen::before { content: "🧾"; }
+.menu-item-logout::before { content: "⇦"; }
 
 .menu-dropdown a:hover,
 .menu-dropdown button:hover {
   background: #69610e;
+}
+
+.menu-dropdown .menu-item-disabled {
+  opacity: 0.45;
+  pointer-events: none;
+  cursor: not-allowed;
 }
 
 .actions-secondary {

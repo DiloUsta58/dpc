@@ -2,7 +2,7 @@
   "name": "DPC",
   "short_name": "Bereitstellung Hz-Lager",
   "description": "Bestandsüberprüfung und Bereitstellung",
-  "start_url": "./index.html",
+  "start_url": "./aufg.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",

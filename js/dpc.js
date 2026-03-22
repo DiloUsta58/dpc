@@ -126,9 +126,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const todayDate = new Date();
   const todayIso = toIsoLocal(todayDate);
-  const appVersion = "1.0.37";
+  const appVersion = "1.0.38";
   const appVersionFile = "app-version.json";
   const selectedDateStateKey = "dpc:selectedDate";
+  const authRoleKey = "dpc:auth:role";
+  const currentAuthRole = (() => {
+    try {
+      return String(sessionStorage.getItem(authRoleKey) || "Admin").trim().toLowerCase();
+    } catch (error) {
+      return "admin";
+    }
+  })();
+  const isAdminRole = currentAuthRole === "admin";
+  const isUserRole = currentAuthRole === "user";
   const uiSettingsKey = "dpc:settings";
   const defaultUiSettings = {
     btnFs: "13",
@@ -191,7 +201,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let uiSettings = readUiSettings();
   applyUiSettings(uiSettings);
-  const canEditPastDays = () => String(uiSettings.allowPastEdit || "0") === "1";
+  const canEditPastDays = () => isAdminRole || isUserRole || String(uiSettings.allowPastEdit || "0") === "1";
+  const isUserSaveLockedByWeek = () => {
+    if (!isUserRole) {
+      return false;
+    }
+    const dayOfWeek = todayDate.getDay();
+    return dayOfWeek === 0 || dayOfWeek === 6;
+  };
   const getCurrentWeekFridayIso = () => {
     const monday = getWeekMonday(todayDate);
     const friday = new Date(monday);
@@ -1099,8 +1116,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const saveStatus = document.getElementById("saveStatus");
   const menuBtn = document.getElementById("menuBtn");
   const menuDropdown = document.getElementById("menuDropdown");
+  const menuWeingPreviewLink = document.getElementById("menuWeingPreviewLink");
+  const menuChargenDataLink = document.getElementById("menuChargenDataLink");
   const exportLocalFileBtn = document.getElementById("exportLocalFileBtn");
   const importLocalFileBtn = document.getElementById("importLocalFileBtn");
+  const logoutBtn = document.getElementById("logoutBtn");
   const importFileInput = document.getElementById("importFileInput");
   const weingInfoEl = document.getElementById("weingInfo");
   const addWaRowBtn = document.getElementById("addWaRowBtn");
@@ -1111,6 +1131,22 @@ document.addEventListener("DOMContentLoaded", () => {
   const getSonderBereitstInputs = () => Array.from(document.querySelectorAll("table.tbl-wa tbody tr:not(.wa-row-controls) td:nth-child(3) input[type='text']"));
   const getChecks = () => Array.from(document.querySelectorAll(".status-check"));
   const getRemarkInputs = () => Array.from(document.querySelectorAll("table.tight tbody tr td:nth-child(5) input[type='text']"));
+
+  const disableMenuItemLink = (link) => {
+    if (!link) {
+      return;
+    }
+    link.setAttribute("aria-disabled", "true");
+    link.classList.add("menu-item-disabled");
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+    });
+  };
+
+  if (isUserRole) {
+    disableMenuItemLink(menuWeingPreviewLink);
+    disableMenuItemLink(menuChargenDataLink);
+  }
 
   const getSnapshot = () => {
     const istInputs = getIstInputs();
@@ -1447,6 +1483,18 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", () => {
+      try {
+        sessionStorage.removeItem("dpc:auth:ok");
+        sessionStorage.removeItem(authRoleKey);
+      } catch (error) {
+        // ignore storage issues and continue with redirect
+      }
+      window.location.href = "index.html";
+    });
+  }
+
   const initSettingsPage = () => {
     const saveBtnLocal = document.getElementById("settingsSaveBtn");
     const loadBtnLocal = document.getElementById("settingsLoadBtn");
@@ -1506,7 +1554,8 @@ document.addEventListener("DOMContentLoaded", () => {
       infoFsEl.value = String(settings.infoFs);
       thFsEl.value = String(settings.thFs);
       tdFsEl.value = String(settings.tdFs);
-      allowPastEditEl.value = String(settings.allowPastEdit || "0");
+      allowPastEditEl.value = String(isUserRole ? "1" : (settings.allowPastEdit || "0"));
+      allowPastEditEl.disabled = isUserRole;
     };
 
     const readFromForm = () => ({
@@ -1515,7 +1564,7 @@ document.addEventListener("DOMContentLoaded", () => {
       infoFs: infoFsEl.value,
       thFs: thFsEl.value,
       tdFs: tdFsEl.value,
-      allowPastEdit: allowPastEditEl.value
+      allowPastEdit: isUserRole ? "1" : allowPastEditEl.value
     });
 
     const syncPreview = () => {
@@ -1573,7 +1622,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (backBtnLocal) {
       backBtnLocal.addEventListener("click", () => {
-        window.location.href = "index.html";
+        window.location.href = "aufg.html";
       });
     }
   };
@@ -1604,7 +1653,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     if (saveBtn) {
-      saveBtn.disabled = isPastDay;
+      saveBtn.disabled = isPastDay || isUserSaveLockedByWeek();
     }
     if (addWaRowBtn) {
       addWaRowBtn.disabled = isPastDay;
@@ -1639,9 +1688,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const minYear = 2026;
   const selectedDateInitial = fromIsoLocal(selectedIso);
-  let selectedYear = Math.max(minYear, selectedDateInitial.getFullYear());
+  let selectedYear = isUserRole
+    ? todayDate.getFullYear()
+    : Math.max(minYear, selectedDateInitial.getFullYear());
   const currentIsoWeek = getIsoWeekNumber(todayDate);
-  let selectedWeek = getIsoWeekNumber(selectedDateInitial);
+  let selectedWeek = isUserRole ? currentIsoWeek : getIsoWeekNumber(selectedDateInitial);
 
   const fillDaysForKw = (year, week) => {
     if (!daySelect) {
@@ -1680,21 +1731,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const weeksInYear = getIsoWeeksInYear(year);
     const todayYear = todayDate.getFullYear();
-    const maxVisibleWeek = year < todayYear ? weeksInYear : (year === todayYear ? currentIsoWeek : 1);
+    const maxVisibleWeek = isUserRole
+      ? currentIsoWeek
+      : (year < todayYear ? weeksInYear : (year === todayYear ? currentIsoWeek : 1));
+    const minVisibleWeek = isUserRole ? currentIsoWeek : 1;
     kwSelect.innerHTML = "";
 
-    for (let week = 1; week <= maxVisibleWeek; week += 1) {
+    for (let week = minVisibleWeek; week <= maxVisibleWeek; week += 1) {
       const option = document.createElement("option");
       option.value = String(week);
       option.textContent = `KW ${String(week).padStart(2, "0")}`;
       kwSelect.appendChild(option);
     }
 
-    if (selectedWeek > maxVisibleWeek) {
+    if (selectedWeek > maxVisibleWeek || selectedWeek < minVisibleWeek) {
       selectedWeek = maxVisibleWeek;
-    }
-    if (selectedWeek < 1) {
-      selectedWeek = 1;
     }
 
     kwSelect.value = String(selectedWeek);
@@ -1706,12 +1757,19 @@ document.addEventListener("DOMContentLoaded", () => {
       yearValue.textContent = String(selectedYear);
     }
     if (yearDownBtn) {
-      yearDownBtn.disabled = selectedYear <= minYear;
+      yearDownBtn.disabled = isUserRole || selectedYear <= minYear;
+    }
+    if (yearUpBtn) {
+      yearUpBtn.disabled = isUserRole;
     }
   };
 
   if (kwSelect) {
-    if (selectedYear === todayDate.getFullYear()) {
+    if (isUserRole) {
+      selectedYear = todayDate.getFullYear();
+      selectedWeek = currentIsoWeek;
+      selectedIso = todayIso;
+    } else if (selectedYear === todayDate.getFullYear()) {
       selectedWeek = currentIsoWeek;
     } else {
       selectedWeek = 1;
@@ -1793,7 +1851,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (yearDownBtn) {
     yearDownBtn.addEventListener("click", () => {
-      if (selectedYear <= minYear) {
+      if (isUserRole || selectedYear <= minYear) {
         return;
       }
       selectedYear -= 1;
@@ -1813,6 +1871,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (yearUpBtn) {
     yearUpBtn.addEventListener("click", () => {
+      if (isUserRole) {
+        return;
+      }
       selectedYear += 1;
       if (selectedYear === todayDate.getFullYear()) {
         selectedWeek = currentIsoWeek;
@@ -2285,6 +2346,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const setReadonlyLocal = () => {
       const isPastDay = selectedIso < todayIso && !canEditPastDays();
+      const lockForUserNonToday = isUserRole
+        && (config.storagePrefix === "wvorbe" || config.storagePrefix === "weing")
+        && selectedIso !== todayIso;
+      const isReadOnly = isPastDay || lockForUserNonToday;
       const editableRows = table.querySelectorAll("tbody tr:not(.add-row-line)");
       editableRows.forEach((row) => {
         row.querySelectorAll("td").forEach((cell, index) => {
@@ -2293,32 +2358,32 @@ document.addEventListener("DOMContentLoaded", () => {
             cell.contentEditable = "false";
             const check = cell.querySelector("input[type='checkbox']");
             if (check) {
-              check.disabled = isPastDay;
-              check.classList.toggle("locked-field", isPastDay);
+              check.disabled = isReadOnly;
+              check.classList.toggle("locked-field", isReadOnly);
             }
-            cell.classList.toggle("locked-field", isPastDay);
+            cell.classList.toggle("locked-field", isReadOnly);
             return;
           }
-          cell.contentEditable = isPastDay ? "false" : "true";
-          cell.classList.toggle("locked-field", isPastDay);
+          cell.contentEditable = isReadOnly ? "false" : "true";
+          cell.classList.toggle("locked-field", isReadOnly);
         });
       });
       refreshAllProbeRows();
 
       if (addRowBtn) {
-        addRowBtn.disabled = isPastDay;
+        addRowBtn.disabled = isReadOnly;
       }
       if (removeRowBtn) {
-        removeRowBtn.disabled = isPastDay || !selectedRow;
+        removeRowBtn.disabled = isReadOnly || !selectedRow;
       }
       if (config.enableInlineRowRemove) {
         const inlineButtons = table.querySelectorAll(".row-remove-inline");
         inlineButtons.forEach((btn) => {
-          btn.disabled = isPastDay;
+          btn.disabled = isReadOnly;
         });
       }
       if (saveBtnLocal) {
-        saveBtnLocal.disabled = isPastDay;
+        saveBtnLocal.disabled = isReadOnly || isUserSaveLockedByWeek();
       }
     };
 
@@ -2755,7 +2820,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const tryLeavePage = () => {
-      window.location.href = "index.html";
+      window.location.href = "aufg.html";
     };
 
     if (backBtn) {
@@ -3018,7 +3083,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (backBtn) {
       backBtn.addEventListener("click", () => {
-        window.location.href = "index.html";
+        window.location.href = "aufg.html";
       });
     }
 
@@ -3308,7 +3373,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (backBtn) {
       backBtn.addEventListener("click", () => {
-        window.location.href = "index.html";
+        window.location.href = "aufg.html";
       });
     }
   };
